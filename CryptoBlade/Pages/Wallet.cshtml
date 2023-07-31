@@ -1,0 +1,38 @@
+﻿@page
+@using CryptoBlade.Services
+@using CryptoBlade.Strategies
+@model WalletModel
+
+@{
+    ViewData["Title"] = "Wallet";
+}
+
+
+<h1>Wallet</h1>
+
+<table class="table">
+    <thead>
+    <tr>
+        <th>Property</th>
+        <th>Value</th>
+    </tr>
+    </thead>
+    <tbody>
+    <tr>
+        <td>Equity</td>
+        <td>@Model.Contract.Equity</td>
+    </tr>
+    <tr>
+        <td>WalletBalance</td>
+        <td>@Model.Contract.WalletBalance</td>
+    </tr>
+    <tr>
+        <td>UnrealizedPnl</td>
+        <td>@Model.Contract.UnrealizedPnl</td>
+    </tr>
+    <tr>
+        <td>RealizedPnl</td>
+        <td>@Model.Contract.RealizedPnl</td>
+    </tr>
+    </tbody>
+</table>

@@ -1,0 +1,85 @@
+﻿@page
+@using CryptoBlade.Services
+@using CryptoBlade.Strategies
+@model IndexModel
+
+@{
+    ViewData["Title"] = "Strategies";
+}
+
+<h1>Available Strategies</h1>
+
+@if (Model.Strategies.Length > 0)
+{
+    <table class="table">
+        <thead>
+        <tr>
+            <th>Strategy</th>
+            <th>Symbol</th>
+            <th>MinOrderQty</th>
+            <th>QtyStep</th>
+            <th>DynamicQtyLong</th>
+            <th>DynamicQtyShort</th>
+            <th>RecommendedMinBalance</th>
+            <th>Price</th>
+            <th>Last price update</th>
+            <th>Last candle update</th>
+            <th>Trading</th>
+            <th>Candles consistent</th>
+            <th>Indicators</th>
+        </tr>
+        </thead>
+        <tbody>
+        @foreach (var strategy in Model.Strategies)
+        {
+            <tr>
+                <td>@strategy.Name</td>
+                <td>@strategy.Symbol</td>
+                <td>@strategy.SymbolInfo.MinOrderQty</td>
+                <td>@strategy.SymbolInfo.QtyStep</td>
+                @{
+                        var dynamicQtyLong = strategy.DynamicQtyLong.HasValue ? strategy.DynamicQtyLong.Value.ToString("0.####") : string.Empty;
+                }
+                    <td>@dynamicQtyLong</td>
+                @{
+                        var dynamicQtyShort = strategy.DynamicQtyShort.HasValue ? strategy.DynamicQtyShort.Value.ToString("0.####") : string.Empty;
+                }
+                    <td>@dynamicQtyShort</td>
+                @{
+                    var recommendedMinBalance = strategy.RecommendedMinBalance.HasValue ? strategy.RecommendedMinBalance.Value.ToString("0.#") : string.Empty;
+                }
+                <td>@recommendedMinBalance</td>
+                <td>@strategy.Ticker?.LastPrice</td>
+                <td>@strategy.LastTickerUpdate</td>
+                <td>@strategy.LastCandleUpdate</td>
+                <td>@strategy.IsInTrade</td>
+                <td>@strategy.ConsistentData</td>
+
+                <td>
+                    <table class="inner-table">
+                        <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Value</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        @foreach (var indicator in strategy.Indicators)
+                        {
+                            <tr>
+                                <td>@indicator.Name</td>
+                                <td>@indicator.Value</td>
+                            </tr>
+                        }
+                        </tbody>
+                    </table>
+                </td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}
+else
+{
+    <p>No strategies available.</p>
+}

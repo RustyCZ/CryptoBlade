@@ -6,7 +6,7 @@ CryptoBlade is a simple trading bot written in C# for cryptocurrency trading. Th
 
 Follow the instructions below to get started with the CryptoBlade Trading Bot:
 
-1. Clone this repository: `git clone [https://github.com/your-username/CryptoBlade.git](https://github.com/RustyCZ/CryptoBlade.git)`
+1. Clone this repository: `git clone https://github.com/RustyCZ/CryptoBlade.git`
 2. Install the required dependencies using .NET Core.
 3. Configure the `appsettings.json` file with your exchange API keys and other settings or use environment variables in step 5. (see the Configuration section).
 4. Build docker `docker build -f "CryptoBlade/Dockerfile" -t cryptoblade:latest .`

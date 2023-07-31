@@ -2,6 +2,17 @@
 CryptoBlade is a simple trading bot written in C# for cryptocurrency trading. This bot is designed to execute trades based on various strategies and indicators.
 **Note**: If you are interested in a specific trading strategy, check out [DirectionalScalper](https://github.com/donewiththedollar/directionalscalper), a popular repository that implements directional scalping strategy. This bot is inspired by directionalscalper and rotates strategies based on volume.
 
+## Getting Started
+
+Follow the instructions below to get started with the CryptoBlade Trading Bot:
+
+1. Clone this repository: `git clone https://github.com/your-username/CryptoBlade.git`
+2. Install the required dependencies using .NET Core.
+3. Configure the `appsettings.json` file with your exchange API keys and other settings or use environment variables in step 5. (see the Configuration section).
+4. Build docker `docker build -f "CryptoBlade/Dockerfile" -t cryptoblade:latest .`
+5. Use docker compose to run bot
+6. Run the bot and start trading!
+
 ## Configuration
 
 Before running the CryptoBlade bot, you need to configure the settings in the `appsettings.json` file or using environment variables. For sample configuration see Samples. Below is an explanation of each configuration option:

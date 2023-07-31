@@ -73,5 +73,27 @@ In the `appsettings.json` file, you can customize various settings to tailor the
 ### ForceMinQty
 The ForceMinQty setting, when set to true, indicates that the CryptoBlade Trading Bot will always enter a position by forcing the minimum quantity required by the exchange, even if the available balance is not sufficient for the entire DCA order.
 
+### Dynamic mode
+The Dynamic mode is designed to dynamically manage the number of running trading strategies based on specific exposure targets for long and short positions. It allows the bot to adjust the number of open positions to maintain the desired overall exposure in the market.
+
+#### Target Long Exposure and Target Short Exposure
+In Dynamic mode, two important parameters are used to control the bot's exposure:
+- Target Long Exposure: This parameter represents the target exposure level the bot aims to maintain for long positions. It is expressed as a percentage of the total wallet balance.
+- Target Short Exposure: Similarly, the Target Short Exposure represents the target exposure level for short positions.
+
+The bot will stop openning new positions once target exposures are breached.
+
+#### Maximum Long and Short Strategies
+To prevent overtrading and to manage risk, Dynamic mode includes two additional parameters:
+- MaxLongStrategies: This parameter sets the maximum number of strategies allowed to open long positions.
+- MaxShortStrategies: Similarly, MaxShortStrategies sets the maximum number of strategies allowed to open short positions.
+
+The bot adheres to these limits and does not open new positions beyond the maximum specified, even if the target exposure level is not met. It waits for existing strategies to close positions and bring the exposure closer to the target level.
+
+#### Wallet Exposure for Individual Positions
+In addition to managing the overall exposure, bot also enforces limits on individual position sizes:
+- WalletExposureLong: This parameter sets the maximum exposure the bot is willing to take for each individual long position. It is expressed as a percentage of the total trading capital or wallet balance.
+- WalletExposureShort: Similarly, WalletExposureShort sets the maximum exposure for each individual short position.
+
 # Disclaimer
 CryptoBlade is an open-source project and comes with no guarantees or warranties. Please use it at your own risk and with caution. The authors are not responsible for any financial losses that may occur while using this bot.

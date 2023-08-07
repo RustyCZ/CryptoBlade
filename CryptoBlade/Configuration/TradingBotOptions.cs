@@ -18,5 +18,6 @@
         public TradingMode TradingMode { get; set; } = TradingMode.Normal;
         public bool ForceMinQty { get; set; } = true;
         public int PlaceOrderAttempts { get; set; } = 3;
+        public decimal MaxAbsFundingRate { get; set; } = 0.0004m;
     }
 }

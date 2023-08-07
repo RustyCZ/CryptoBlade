@@ -300,7 +300,8 @@ namespace CryptoBlade.Strategies.Common
                     && !buyOrders.Any() 
                     && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleLongOrder)
                     && dynamicQtyLong.HasValue
-                    && canOpenLongPosition)
+                    && canOpenLongPosition
+                    && LongFundingWithinLimit(ticker))
                 {
                     m_logger.LogInformation($"{Name}: {Symbol} trying to open long position");
                     await PlaceLimitBuyOrderAsync(dynamicQtyLong.Value, ticker.BestBidPrice, lastPrimaryQuote.Date, cancel);
@@ -311,7 +312,8 @@ namespace CryptoBlade.Strategies.Common
                     && !sellOrders.Any() 
                     && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleShortOrder)
                     && dynamicQtyShort.HasValue
-                    && canOpenShortPosition)
+                    && canOpenShortPosition
+                    && ShortFundingWithinLimit(ticker))
                 {
                     m_logger.LogInformation($"{Name}: {Symbol} trying to open short position");
                     await PlaceLimitSellOrderAsync(dynamicQtyShort.Value, ticker.BestAskPrice, lastPrimaryQuote.Date, cancel);
@@ -647,6 +649,20 @@ namespace CryptoBlade.Strategies.Common
             if (lastTrade == null)
                 return true;
             return lastTrade.Value < candle.Date;
+        }
+
+        private bool ShortFundingWithinLimit(Ticker ticker)
+        {
+            if (!ticker.FundingRate.HasValue)
+                return true;
+            return ticker.FundingRate.Value >= -m_options.Value.MaxAbsFundingRate;
+        }
+
+        private bool LongFundingWithinLimit(Ticker ticker)
+        {
+            if (!ticker.FundingRate.HasValue)
+                return true;
+            return ticker.FundingRate.Value <= m_options.Value.MaxAbsFundingRate;
         }
 
         private decimal? CalculateDynamicQty(decimal price, decimal walletExposure)

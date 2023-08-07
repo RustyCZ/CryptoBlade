@@ -43,7 +43,8 @@ namespace CryptoBlade.Strategies
                 WalletExposureShort = config.WalletExposureShort,
                 ForceMinQty = config.ForceMinQty,
                 PlaceOrderAttempts = config.PlaceOrderAttempts,
-                TradingMode = GetTradingMode(config, symbol)
+                TradingMode = GetTradingMode(config, symbol),
+                MaxAbsFundingRate = config.MaxAbsFundingRate,
             });
             return new AutoHedgeStrategy(options, symbol, m_walletManager, m_bybitRestClient);
         }
@@ -59,7 +60,8 @@ namespace CryptoBlade.Strategies
                 WalletExposureShort = config.WalletExposureShort,
                 ForceMinQty = config.ForceMinQty,
                 PlaceOrderAttempts = config.PlaceOrderAttempts,
-                TradingMode = GetTradingMode(config, symbol)
+                TradingMode = GetTradingMode(config, symbol),
+                MaxAbsFundingRate = config.MaxAbsFundingRate,
             });
             return new MfiRsiCandlePreciseTradingStrategy(options, symbol, m_walletManager, m_bybitRestClient);
         }
@@ -75,7 +77,8 @@ namespace CryptoBlade.Strategies
                 WalletExposureShort = config.WalletExposureShort,
                 ForceMinQty = config.ForceMinQty,
                 PlaceOrderAttempts = config.PlaceOrderAttempts,
-                TradingMode = GetTradingMode(config, symbol)
+                TradingMode = GetTradingMode(config, symbol),
+                MaxAbsFundingRate = config.MaxAbsFundingRate,
             });
             return new MfiRsiEriTrendTradingStrategy(options, symbol, m_walletManager, m_bybitRestClient);
         }

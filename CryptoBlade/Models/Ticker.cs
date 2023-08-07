@@ -7,5 +7,7 @@
         public decimal BestBidPrice { get; set; }
 
         public decimal LastPrice { get; set; }
+
+        public decimal? FundingRate { get; set; }
     }
 }

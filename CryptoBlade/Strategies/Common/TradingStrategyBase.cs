@@ -412,14 +412,14 @@ namespace CryptoBlade.Strategies.Common
             var shortPosition = ShortPosition;
             decimal? shortTakeProfit = null;
             if(shortPosition != null)
-                shortTakeProfit = TradingHelpers.CalculateShortTakeProfit(shortPosition.AveragePrice, SymbolInfo, quotes5Min, spread5Min);
+                shortTakeProfit = TradingHelpers.CalculateShortTakeProfit(shortPosition.AveragePrice, SymbolInfo, quotes5Min, spread5Min, ticker);
             ShortTakeProfitPrice = shortTakeProfit;
             if(shortTakeProfit.HasValue)
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.ShortTakeProfit), shortTakeProfit.Value));
 
             decimal? longTakeProfit = null;
             if(longPosition != null)
-                longTakeProfit = TradingHelpers.CalculateLongTakeProfit(longPosition.AveragePrice, SymbolInfo, quotes5Min, spread5Min);
+                longTakeProfit = TradingHelpers.CalculateLongTakeProfit(longPosition.AveragePrice, SymbolInfo, quotes5Min, spread5Min, ticker);
             LongTakeProfitPrice = longTakeProfit;
             if(longTakeProfit.HasValue)
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.LongTakeProfit), longTakeProfit.Value));

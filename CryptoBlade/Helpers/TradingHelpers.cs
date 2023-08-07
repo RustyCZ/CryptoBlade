@@ -41,7 +41,7 @@ namespace CryptoBlade.Helpers
         }
 
         public static decimal? CalculateShortTakeProfit(decimal shortPosPrice, SymbolInfo symbolInfo, Quote[] quotes,
-            decimal increasePercentage)
+            decimal increasePercentage, Ticker currentPrice)
         {
             var ma6High = quotes.Use(CandlePart.High).GetSma(6);
             var ma6Low = quotes.Use(CandlePart.Low).GetSma(6);
@@ -54,12 +54,13 @@ namespace CryptoBlade.Helpers
             decimal shortTargetPrice = shortPosPrice - ((decimal)ma6HighLast.Sma.Value - (decimal)ma6LowLast.Sma.Value);
             decimal shortTakeProfit = shortTargetPrice * (1.0m - increasePercentage / 100.0m);
             shortTakeProfit = Math.Round(shortTakeProfit, (int)symbolInfo.PriceScale, MidpointRounding.AwayFromZero);
-
+            if(currentPrice.BestBidPrice < shortTakeProfit)
+                shortTakeProfit = currentPrice.BestBidPrice;
             return shortTakeProfit;
         }
 
         public static decimal? CalculateLongTakeProfit(decimal longPosPrice, SymbolInfo symbolInfo, Quote[] quotes,
-            decimal increasePercentage)
+            decimal increasePercentage, Ticker currentPrice)
         {
             var ma6High = quotes.Use(CandlePart.High).GetSma(6);
             var ma6Low = quotes.Use(CandlePart.Low).GetSma(6);
@@ -72,6 +73,8 @@ namespace CryptoBlade.Helpers
             decimal longTargetPrice = longPosPrice + ((decimal)ma6HighLast.Sma.Value - (decimal)ma6LowLast.Sma.Value);
             decimal longTakeProfit = longTargetPrice * (1.0m + increasePercentage / 100.0m);
             longTakeProfit = Math.Round(longTakeProfit, (int)symbolInfo.PriceScale, MidpointRounding.AwayFromZero);
+            if(currentPrice.BestAskPrice > longTakeProfit)
+                longTakeProfit = currentPrice.BestAskPrice;
             return longTakeProfit;
         }
     }

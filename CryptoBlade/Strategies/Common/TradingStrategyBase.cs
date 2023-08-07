@@ -16,6 +16,7 @@ using Skender.Stock.Indicators;
 using OrderSide = CryptoBlade.Models.OrderSide;
 using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
 using PositionMode = Bybit.Net.Enums.V5.PositionMode;
+using TradeMode = Bybit.Net.Enums.TradeMode;
 
 namespace CryptoBlade.Strategies.Common
 {
@@ -121,6 +122,7 @@ namespace CryptoBlade.Strategies.Common
             SymbolInfo = symbol;
             if (symbol.MaxLeverage.HasValue && m_options.Value.TradingMode != TradingMode.Readonly)
             {
+                m_logger.LogInformation($"Setting up trading configuration for symbol {symbol.Name}");
                 var leverageRes = await ExchangePolicies.
                     RetryTooManyVisits.ExecuteAsync(async () =>
                 {
@@ -132,12 +134,18 @@ namespace CryptoBlade.Strategies.Common
                 });
                 bool leverageOk = leverageRes.Success || leverageRes.Error != null && leverageRes.Error.Code == (int)BybitErrorCodes.LeverageNotChanged;
                 if (!leverageOk)
+                {
+                    m_logger.LogError($"Failed to setup leverage. {leverageRes.Error?.Message}");
                     throw new InvalidOperationException($"Failed to setup leverage. {leverageRes.Error?.Message}");
+                }
+
+                m_logger.LogInformation($"Leverage set to {symbol.MaxLeverage.Value} for {symbol.Name}");
+
                 var modeChange = await ExchangePolicies.
                     RetryTooManyVisits.ExecuteAsync(async () =>
                     {
                         var modeChange = await m_bybitRestClient.V5Api.Account.SwitchPositionModeAsync(
-                            Category.Inverse,
+                            Category.Linear,
                             PositionMode.BothSides,
                             symbol.Name,
                             null,
@@ -147,7 +155,34 @@ namespace CryptoBlade.Strategies.Common
                 
                 bool modeOk = modeChange.Success || modeChange.Error != null && modeChange.Error.Code == (int)BybitErrorCodes.PositionModeNotChanged;
                 if (!modeOk)
-                    throw new InvalidOperationException($"Failed to setup mode. {modeChange.Error?.Message}");
+                {
+                    m_logger.LogError($"Failed to setup position mode. {modeChange.Error?.Message}");
+                    throw new InvalidOperationException($"Failed to setup position mode. {modeChange.Error?.Message}");
+                }
+
+                m_logger.LogInformation($"Position mode set to {PositionMode.BothSides} for {symbol.Name}");
+
+                var crossMode= await ExchangePolicies.
+                    RetryTooManyVisits.ExecuteAsync(async () =>
+                    {
+                        var crossModeResult = await m_bybitRestClient.V5Api.Account.SwitchCrossIsolatedMarginAsync(
+                            Category.Linear, 
+                            Symbol,
+                            TradeMode.CrossMargin, 
+                            symbol.MaxLeverage.Value, 
+                            symbol.MaxLeverage.Value,
+                            cancel);
+                        return crossModeResult;
+                    });
+                bool crossModeOk = crossMode.Success || crossMode.Error != null && crossMode.Error.Code == (int)BybitErrorCodes.CrossModeNotModified;
+                if (!crossModeOk)
+                {
+                    m_logger.LogError($"Failed to setup cross mode. {crossMode.Error?.Message}");
+                    throw new InvalidOperationException($"Failed to setup cross mode. {crossMode.Error?.Message}");
+                }
+
+                m_logger.LogInformation($"Cross mode set to {TradeMode.CrossMargin} for {symbol.Name}");
+                m_logger.LogInformation($"Symbol {symbol.Name} setup completed");
             }
         }
 
@@ -489,7 +524,7 @@ namespace CryptoBlade.Strategies.Common
                         var orderBook = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderbook>
                             .RetryTooManyVisits
                             .ExecuteAsync(async () =>
-                                await m_bybitRestClient.V5Api.ExchangeData.GetOrderbookAsync(Category.Inverse, Symbol,
+                                await m_bybitRestClient.V5Api.ExchangeData.GetOrderbookAsync(Category.Linear, Symbol,
                                     limit: 1, cancel));
                         if (orderBook.GetResultOrError(out var orderBookData, out _))
                         {
@@ -547,7 +582,7 @@ namespace CryptoBlade.Strategies.Common
                         m_logger.LogInformation($"{Name}: {Symbol} Sell order was cancelled. Adjusting price.");
                         var orderBook = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderbook>.RetryTooManyVisits
                             .ExecuteAsync(async () =>
-                                await m_bybitRestClient.V5Api.ExchangeData.GetOrderbookAsync(Category.Inverse, Symbol,
+                                await m_bybitRestClient.V5Api.ExchangeData.GetOrderbookAsync(Category.Linear, Symbol,
                                     limit: 1, cancel));
                         if (orderBook.GetResultOrError(out var orderBookData, out _))
                         {

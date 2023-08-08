@@ -180,6 +180,7 @@ namespace CryptoBlade.Mapping
                 BestAskPrice = ticker.BestAskPrice.Value,
                 LastPrice = ticker.LastPrice.Value,
                 BestBidPrice = ticker.BestBidPrice.Value,
+                FundingRate = ticker.FundingRate,
             };
         }
 

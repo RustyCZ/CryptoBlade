@@ -1,9 +1,7 @@
 ﻿using System.Threading.Channels;
-using Bybit.Net.Clients;
 using Bybit.Net.Enums;
 using Bybit.Net.Enums.V5;
 using Bybit.Net.Interfaces.Clients;
-using Bybit.Net.Objects.Models;
 using CryptoBlade.Configuration;
 using CryptoBlade.Helpers;
 using CryptoBlade.Mapping;
@@ -11,7 +9,6 @@ using CryptoBlade.Models;
 using CryptoBlade.Strategies.Policies;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
-using Nito.AsyncEx;
 using Skender.Stock.Indicators;
 using OrderSide = CryptoBlade.Models.OrderSide;
 using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
@@ -28,7 +25,7 @@ namespace CryptoBlade.Strategies.Common
         private readonly IWalletManager m_walletManager;
         private readonly IBybitRestClient m_bybitRestClient;
         private readonly ILogger m_logger;
-        private Random m_random = new Random();
+        private readonly Random m_random = new Random();
 
         protected TradingStrategyBase(IOptions<TradingStrategyBaseOptions> options,
             string symbol, 
@@ -449,14 +446,28 @@ namespace CryptoBlade.Strategies.Common
             var shortPosition = ShortPosition;
             decimal? shortTakeProfit = null;
             if(shortPosition != null)
-                shortTakeProfit = TradingHelpers.CalculateShortTakeProfit(shortPosition.AveragePrice, SymbolInfo, quotes5Min, spread5Min, ticker);
+                shortTakeProfit = TradingHelpers.CalculateShortTakeProfit(
+                    shortPosition, 
+                    SymbolInfo, 
+                    quotes5Min, 
+                    spread5Min, 
+                    ticker,
+                    m_options.Value.FeeRate,
+                    m_options.Value.MinProfitRate);
             ShortTakeProfitPrice = shortTakeProfit;
             if(shortTakeProfit.HasValue)
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.ShortTakeProfit), shortTakeProfit.Value));
 
             decimal? longTakeProfit = null;
             if(longPosition != null)
-                longTakeProfit = TradingHelpers.CalculateLongTakeProfit(longPosition.AveragePrice, SymbolInfo, quotes5Min, spread5Min, ticker);
+                longTakeProfit = TradingHelpers.CalculateLongTakeProfit(
+                    longPosition, 
+                    SymbolInfo, 
+                    quotes5Min, 
+                    spread5Min, 
+                    ticker,
+                    m_options.Value.FeeRate,
+                    m_options.Value.MinProfitRate);
             LongTakeProfitPrice = longTakeProfit;
             if(longTakeProfit.HasValue)
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.LongTakeProfit), longTakeProfit.Value));

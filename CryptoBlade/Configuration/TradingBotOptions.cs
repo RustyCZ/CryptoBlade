@@ -19,5 +19,7 @@
         public bool ForceMinQty { get; set; } = true;
         public int PlaceOrderAttempts { get; set; } = 3;
         public decimal MaxAbsFundingRate { get; set; } = 0.0004m;
+        public decimal FeeRate { get; set; } = 0.0002m;
+        public decimal MinProfitRate { get; set; } = 0.0006m;
     }
 }

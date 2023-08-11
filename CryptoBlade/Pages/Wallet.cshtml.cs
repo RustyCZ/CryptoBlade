@@ -19,10 +19,10 @@ namespace CryptoBlade.Pages
             m_strategyManager = strategyManager;
         }
 
-        public async Task<IActionResult> OnGetAsync()
+        public Task<IActionResult> OnGetAsync()
         {
             Contract = m_strategyManager.Contract;
-            return Page();
+            return Task.FromResult<IActionResult>(Page());
         }
     }
 }

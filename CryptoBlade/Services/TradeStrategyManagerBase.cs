@@ -1,22 +1,10 @@
-﻿using System.Text;
-using System.Text.Json;
-using System.Threading.Channels;
-using Bybit.Net.Clients;
-using Bybit.Net.Enums;
-using Bybit.Net.Enums.V5;
-using Bybit.Net.Interfaces.Clients;
-using Bybit.Net.Objects.Models.Socket.Derivatives;
-using Bybit.Net.Objects.Models.V5;
+﻿using System.Threading.Channels;
 using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
-using CryptoBlade.Helpers;
-using CryptoBlade.Mapping;
 using CryptoBlade.Models;
 using CryptoBlade.Strategies;
 using CryptoBlade.Strategies.Common;
-using CryptoBlade.Strategies.Policies;
 using CryptoBlade.Strategies.Wallet;
-using CryptoExchange.Net.Sockets;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using OrderStatus = CryptoBlade.Models.OrderStatus;
@@ -30,10 +18,10 @@ namespace CryptoBlade.Services
         private readonly Dictionary<string, ITradingStrategy> m_strategies;
         private readonly ITradingStrategyFactory m_strategyFactory;
         private readonly ICbFuturesRestClient m_restClient;
-        private readonly IBybitSocketClient m_bybitSocketClient;
+        private readonly ICbFuturesSocketClient m_socketClient;
         private readonly IOptions<TradingBotOptions> m_options;
         private CancellationTokenSource? m_cancelSource;
-        private readonly List<UpdateSubscription> m_subscriptions;
+        private readonly List<IUpdateSubscription> m_subscriptions;
         private readonly Channel<string> m_strategyExecutionChannel;
         private readonly AsyncLock m_lock;
         private Task? m_initTask;
@@ -45,18 +33,18 @@ namespace CryptoBlade.Services
             ILogger<TradeStrategyManagerBase> logger,
             ITradingStrategyFactory strategyFactory,
             ICbFuturesRestClient restClient,
-            IBybitSocketClient bybitSocketClient, 
+            ICbFuturesSocketClient socketClient, 
             IWalletManager walletManager)
         {
             m_lock = new AsyncLock();
             m_options = options;
             m_strategyFactory = strategyFactory;
-            m_bybitSocketClient = bybitSocketClient;
             m_walletManager = walletManager;
+            m_socketClient = socketClient;
             m_restClient = restClient;
             m_logger = logger;
             m_strategies = new Dictionary<string, ITradingStrategy>();
-            m_subscriptions = new List<UpdateSubscription>();
+            m_subscriptions = new List<IUpdateSubscription>();
             m_strategyExecutionChannel = Channel.CreateUnbounded<string>();
             m_lastExecutionTimestamp = DateTime.UtcNow.Ticks;
         }
@@ -112,15 +100,7 @@ namespace CryptoBlade.Services
             var symbols = m_strategies.Values.Select(x => x.Symbol).ToArray();
             await UpdateTradingStatesAsync(cancel);
 
-            var orderUpdateSubscription = await ExchangePolicies.RetryForever
-                .ExecuteAsync(async () =>
-                {
-                    var subscriptionResult = await m_bybitSocketClient.V5PrivateApi.SubscribeToOrderUpdatesAsync(
-                        OnOrderUpdate, cancel);
-                    if (subscriptionResult.GetResultOrError(out var data, out var error))
-                        return data;
-                    throw new InvalidOperationException(error.Message);
-                });
+            var orderUpdateSubscription = await m_socketClient.SubscribeToOrderUpdatesAsync(OnOrderUpdate, cancel);
             orderUpdateSubscription.AutoReconnect(m_logger);
             m_subscriptions.Add(orderUpdateSubscription);
 
@@ -131,17 +111,11 @@ namespace CryptoBlade.Services
 
             foreach (TimeFrame timeFrame in timeFrames)
             {
-                var klineUpdatesSubscription = await ExchangePolicies.RetryForever
-                    .ExecuteAsync(async () =>
-                    {
-                        var subscriptionResult = await m_bybitSocketClient.V5LinearApi.SubscribeToKlineUpdatesAsync(
-                            symbols,
-                            timeFrame.ToKlineInterval(), OnKlineUpdate,
-                            cancel);
-                        if (subscriptionResult.GetResultOrError(out var data, out var error))
-                            return data;
-                        throw new InvalidOperationException(error.Message);
-                    });
+                var klineUpdatesSubscription = await m_socketClient.SubscribeToKlineUpdatesAsync(
+                    symbols,
+                    timeFrame,
+                    OnKlineUpdate,
+                    cancel);
                 klineUpdatesSubscription.AutoReconnect(m_logger);
                 m_subscriptions.Add(klineUpdatesSubscription);
             }
@@ -163,14 +137,7 @@ namespace CryptoBlade.Services
                 }
             }
 
-            var tickerSubscription = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
-            {
-                var tickerSubscriptionResult = await m_bybitSocketClient.V5LinearApi
-                    .SubscribeToTickerUpdatesAsync(symbols, OnTicker, cancel);
-                if (tickerSubscriptionResult.GetResultOrError(out var data, out var error))
-                    return data;
-                throw new InvalidOperationException(error.Message);
-            });
+            var tickerSubscription = await m_socketClient.SubscribeToTickerUpdatesAsync(symbols, OnTicker, cancel);
             tickerSubscription.AutoReconnect(m_logger);
             m_subscriptions.Add(tickerSubscription);
 
@@ -178,58 +145,38 @@ namespace CryptoBlade.Services
             m_strategyExecutionTask = Task.Run(async () => await StrategyExecutionAsync(cancel), cancel);
         }
 
-        private void OnOrderUpdate(DataEvent<IEnumerable<BybitOrderUpdate>> obj)
+        private void OnOrderUpdate(OrderUpdate orderUpdate)
         {
-            foreach (BybitOrderUpdate bybitOrderUpdate in obj.Data)
+            if (orderUpdate.Status == OrderStatus.Filled)
             {
-                if(bybitOrderUpdate.Category != Category.Linear)
-                    continue;
-                if (bybitOrderUpdate.Status == Bybit.Net.Enums.V5.OrderStatus.Filled)
-                {
-                    // we want to schedule the strategy execution for the symbol after the order is filled
-                    m_logger.LogInformation($"Order {bybitOrderUpdate.OrderId} for symbol {bybitOrderUpdate.Symbol} is filled. Scheduling trade execution.");
-                    m_strategyExecutionChannel.Writer.TryWrite(bybitOrderUpdate.Symbol);
-                }
+                // we want to schedule the strategy execution for the symbol after the order is filled
+                m_logger.LogInformation($"Order {orderUpdate.OrderId} for symbol {orderUpdate.Symbol} is filled. Scheduling trade execution.");
+                m_strategyExecutionChannel.Writer.TryWrite(orderUpdate.Symbol);
             }
         }
 
-        private async void OnTicker(DataEvent<BybitLinearTickerUpdate> obj)
+        private async void OnTicker(string symbol, Ticker ticker)
         {
             using (await m_lock.LockAsync())
             {
-                var ticker = obj.Data.ToTicker();
-                if (ticker == null)
-                    return;
-                if (m_strategies.TryGetValue(obj.Data.Symbol, out var strategy))
+                if (m_strategies.TryGetValue(symbol, out var strategy))
                     await strategy.UpdatePriceDataSync(ticker, CancellationToken.None);
             }
         }
 
-        private async void OnKlineUpdate(DataEvent<IEnumerable<BybitKlineUpdate>> obj)
+        private async void OnKlineUpdate(string symbol, Candle candle)
         {
-            if (string.IsNullOrEmpty(obj.Topic))
-                return;
-            string[] topicParts = obj.Topic.Split('.');
-            if (topicParts.Length != 2)
-                return;
-            string symbol = topicParts[1];
             using (await m_lock.LockAsync())
             {
-                foreach (BybitKlineUpdate bybitKlineUpdate in obj.Data)
+                if (m_strategies.TryGetValue(symbol, out var strategy))
                 {
-                    if (!bybitKlineUpdate.Confirm)
-                        continue;
-                    if (m_strategies.TryGetValue(symbol, out var strategy))
+                    await strategy.AddCandleDataAsync(candle, CancellationToken.None);
+                    bool isPrimaryCandle = strategy.RequiredTimeFrameWindows.Any(x => x.TimeFrame == candle.TimeFrame);
+                    if (isPrimaryCandle)
                     {
-                        var candle = bybitKlineUpdate.ToCandle();
-                        await strategy.AddCandleDataAsync(candle, CancellationToken.None);
-                        bool isPrimaryCandle = strategy.RequiredTimeFrameWindows.Any(x => x.TimeFrame == candle.TimeFrame);
-                        if (isPrimaryCandle)
-                        {
-                            m_logger.LogInformation(
-                                $"Strategy {strategy.Name}:{strategy.Symbol} received primary candle. Scheduling trade execution.");
-                            await m_strategyExecutionChannel.Writer.WriteAsync(strategy.Symbol, CancellationToken.None);
-                        }
+                        m_logger.LogInformation(
+                            $"Strategy {strategy.Name}:{strategy.Symbol} received primary candle. Scheduling trade execution.");
+                        await m_strategyExecutionChannel.Writer.WriteAsync(strategy.Symbol, CancellationToken.None);
                     }
                 }
             }

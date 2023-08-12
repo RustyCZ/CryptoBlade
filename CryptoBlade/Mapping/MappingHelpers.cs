@@ -345,5 +345,15 @@ namespace CryptoBlade.Mapping
                     throw new ArgumentOutOfRangeException(nameof(tradeMode), tradeMode, null);
             }
         }
+
+        public static OrderUpdate ToOrderUpdate(this Bybit.Net.Objects.Models.V5.BybitOrderUpdate value)
+        {
+            return new OrderUpdate
+            {
+                Symbol = value.Symbol,
+                OrderId = value.OrderId,
+                Status = value.Status.ToOrderStatus(),
+            };
+        }
     }
 }

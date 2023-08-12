@@ -1,5 +1,4 @@
-﻿using Bybit.Net.Interfaces.Clients;
-using CryptoBlade.Configuration;
+﻿using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
 using CryptoBlade.Strategies;
 using CryptoBlade.Strategies.Common;
@@ -17,9 +16,9 @@ namespace CryptoBlade.Services
             ILogger<DefaultTradingStrategyManager> logger, 
             ITradingStrategyFactory strategyFactory,
             ICbFuturesRestClient restClient,
-            IBybitSocketClient bybitSocketClient, 
+            ICbFuturesSocketClient socketClient, 
             IWalletManager walletManager) 
-            : base(options, logger, strategyFactory, restClient, bybitSocketClient, walletManager)
+            : base(options, logger, strategyFactory, restClient, socketClient, walletManager)
         {
             m_options = options;
             m_logger = logger;

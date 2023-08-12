@@ -14,8 +14,6 @@ namespace CryptoBlade.Strategies
 
         public TradingMode TradingMode { get; set; }
 
-        public int PlaceOrderAttempts { get; set; }
-
         public decimal MaxAbsFundingRate { get; set; } = 0.0004m;
 
         public decimal FeeRate { get; set; } = 0.0002m;

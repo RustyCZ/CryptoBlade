@@ -1,19 +1,12 @@
 ﻿using System.Threading.Channels;
-using Bybit.Net.Enums;
-using Bybit.Net.Enums.V5;
-using Bybit.Net.Interfaces.Clients;
 using CryptoBlade.Configuration;
+using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
 using CryptoBlade.Mapping;
 using CryptoBlade.Models;
-using CryptoBlade.Strategies.Policies;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
 using Skender.Stock.Indicators;
-using OrderSide = CryptoBlade.Models.OrderSide;
-using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
-using PositionMode = Bybit.Net.Enums.V5.PositionMode;
-using TradeMode = Bybit.Net.Enums.TradeMode;
 
 namespace CryptoBlade.Strategies.Common
 {
@@ -23,20 +16,20 @@ namespace CryptoBlade.Strategies.Common
         private readonly Channel<Candle> m_candleBuffer;
         private const int c_defaultCandleBufferSize = 1000;
         private readonly IWalletManager m_walletManager;
-        private readonly IBybitRestClient m_bybitRestClient;
+        private readonly ICbFuturesRestClient m_cbFuturesRestClient;
         private readonly ILogger m_logger;
         private readonly Random m_random = new Random();
 
         protected TradingStrategyBase(IOptions<TradingStrategyBaseOptions> options,
             string symbol, 
             TimeFrameWindow[] requiredTimeFrames, 
-            IWalletManager walletManager, 
-            IBybitRestClient bybitRestClient)
+            IWalletManager walletManager,
+            ICbFuturesRestClient cbFuturesRestClient)
         {
             m_logger = ApplicationLogging.CreateLogger(GetType().FullName ?? nameof(TradingStrategyBase));
             RequiredTimeFrameWindows = requiredTimeFrames;
             m_walletManager = walletManager;
-            m_bybitRestClient = bybitRestClient;
+            m_cbFuturesRestClient = cbFuturesRestClient;
             m_options = options;
             Symbol = symbol;
             QuoteQueues = new Dictionary<TimeFrame, QuoteQueue>();
@@ -117,66 +110,25 @@ namespace CryptoBlade.Strategies.Common
         public async Task SetupSymbolAsync(SymbolInfo symbol, CancellationToken cancel)
         {
             SymbolInfo = symbol;
-            if (symbol.MaxLeverage.HasValue && m_options.Value.TradingMode != TradingMode.Readonly)
+            if (m_options.Value.TradingMode != TradingMode.Readonly)
             {
                 m_logger.LogInformation($"Setting up trading configuration for symbol {symbol.Name}");
-                var leverageRes = await ExchangePolicies.
-                    RetryTooManyVisits.ExecuteAsync(async () =>
-                {
-                    var leverageRes = await m_bybitRestClient.V5Api.Account
-                        .SetLeverageAsync(Category.Linear, symbol.Name, symbol.MaxLeverage.Value,
-                            symbol.MaxLeverage.Value,
-                            cancel);
-                    return leverageRes;
-                });
-                bool leverageOk = leverageRes.Success || leverageRes.Error != null && leverageRes.Error.Code == (int)BybitErrorCodes.LeverageNotChanged;
+                bool leverageOk = await m_cbFuturesRestClient.SetLeverageAsync(symbol, cancel);
                 if (!leverageOk)
-                {
-                    m_logger.LogError($"Failed to setup leverage. {leverageRes.Error?.Message}");
-                    throw new InvalidOperationException($"Failed to setup leverage. {leverageRes.Error?.Message}");
-                }
+                    throw new InvalidOperationException("Failed to setup leverage.");
 
-                m_logger.LogInformation($"Leverage set to {symbol.MaxLeverage.Value} for {symbol.Name}");
+                m_logger.LogInformation($"Leverage set to {symbol.MaxLeverage} for {symbol.Name}");
 
-                var modeChange = await ExchangePolicies.
-                    RetryTooManyVisits.ExecuteAsync(async () =>
-                    {
-                        var modeChange = await m_bybitRestClient.V5Api.Account.SwitchPositionModeAsync(
-                            Category.Linear,
-                            PositionMode.BothSides,
-                            symbol.Name,
-                            null,
-                            cancel);
-                        return modeChange;
-                    });
-                
-                bool modeOk = modeChange.Success || modeChange.Error != null && modeChange.Error.Code == (int)BybitErrorCodes.PositionModeNotChanged;
+                bool modeOk = await m_cbFuturesRestClient.SwitchPositionModeAsync(PositionMode.Hedge, symbol.Name, cancel);
                 if (!modeOk)
-                {
-                    m_logger.LogError($"Failed to setup position mode. {modeChange.Error?.Message}");
-                    throw new InvalidOperationException($"Failed to setup position mode. {modeChange.Error?.Message}");
-                }
+                    throw new InvalidOperationException("Failed to setup position mode.");
 
-                m_logger.LogInformation($"Position mode set to {PositionMode.BothSides} for {symbol.Name}");
+                m_logger.LogInformation($"Position mode set to {PositionMode.Hedge} for {symbol.Name}");
 
-                var crossMode= await ExchangePolicies.
-                    RetryTooManyVisits.ExecuteAsync(async () =>
-                    {
-                        var crossModeResult = await m_bybitRestClient.V5Api.Account.SwitchCrossIsolatedMarginAsync(
-                            Category.Linear, 
-                            Symbol,
-                            TradeMode.CrossMargin, 
-                            symbol.MaxLeverage.Value, 
-                            symbol.MaxLeverage.Value,
-                            cancel);
-                        return crossModeResult;
-                    });
-                bool crossModeOk = crossMode.Success || crossMode.Error != null && crossMode.Error.Code == (int)BybitErrorCodes.CrossModeNotModified;
+                
+                bool crossModeOk = await m_cbFuturesRestClient.SwitchCrossIsolatedMarginAsync(symbol, TradeMode.CrossMargin, cancel);
                 if (!crossModeOk)
-                {
-                    m_logger.LogError($"Failed to setup cross mode. {crossMode.Error?.Message}");
-                    throw new InvalidOperationException($"Failed to setup cross mode. {crossMode.Error?.Message}");
-                }
+                    throw new InvalidOperationException("Failed to setup cross mode.");
 
                 m_logger.LogInformation($"Cross mode set to {TradeMode.CrossMargin} for {symbol.Name}");
                 m_logger.LogInformation($"Symbol {symbol.Name} setup completed");
@@ -492,167 +444,32 @@ namespace CryptoBlade.Strategies.Common
 
         private async Task<bool> CancelOrderAsync(string orderId, CancellationToken cancel)
         {
-            var cancelOrder = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
-                .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading
-                .CancelOrderAsync(Category.Linear, Symbol, orderId, null, null, cancel));
-            if(cancelOrder.GetResultOrError(out _, out var error))
-                return true;
-            m_logger.LogError($"{Name}: {Symbol} Error canceling order: {error}");
-            return false;
+            bool res = await m_cbFuturesRestClient.CancelOrderAsync(Symbol, orderId, cancel);
+            return res;
         }
 
         private async Task PlaceLimitBuyOrderAsync(decimal qty, decimal bidPrice, DateTime candleTime, CancellationToken cancel)
         {
-            for (int attempt = 0; attempt < m_options.Value.PlaceOrderAttempts; attempt++)
-            {
-                m_logger.LogInformation($"{Name}: {Symbol} Placing limit buy order for '{qty}' @ '{bidPrice}'");
-                var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
-                    .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
-                        category: Category.Linear,
-                        symbol: Symbol,
-                        side: Bybit.Net.Enums.OrderSide.Buy,
-                        type: NewOrderType.Limit,
-                        quantity: qty,
-                        price: bidPrice,
-                        positionIdx: PositionIdx.BuyHedgeMode,
-                        reduceOnly: false,
-                        timeInForce: TimeInForce.PostOnly,
-                        ct: cancel));
-                if (!buyOrderRes.GetResultOrError(out var buyOrder, out _)) 
-                    continue;
-                var orderStatusRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrder>
-                    .RetryTooManyVisitsBybitResponse
-                    .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
-                        category: Category.Linear,
-                        symbol: Symbol,
-                        orderId: buyOrder.OrderId,
-                        ct: cancel));
-                if (orderStatusRes.GetResultOrError(out var orderStatus, out _))
-                {
-                    var order = orderStatus.List
-                        .FirstOrDefault(x => string.Equals(x.OrderId, buyOrder.OrderId, StringComparison.Ordinal));
-                    if (order != null && order.Status == OrderStatus.Cancelled)
-                    {
-                        m_logger.LogInformation($"{Name}: {Symbol} Buy order was cancelled. Adjusting price.");
-                        var orderBook = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderbook>
-                            .RetryTooManyVisits
-                            .ExecuteAsync(async () =>
-                                await m_bybitRestClient.V5Api.ExchangeData.GetOrderbookAsync(Category.Linear, Symbol,
-                                    limit: 1, cancel));
-                        if (orderBook.GetResultOrError(out var orderBookData, out _))
-                        {
-                            var bestBid = orderBookData.Bids.FirstOrDefault();
-                            if (bestBid != null)
-                            {
-                                bidPrice = bestBid.Price;
-                            }
-                        }
-                        continue;
-                    }
-                    m_logger.LogInformation($"{Name}: {Symbol} Buy order placed for '{qty}' @ '{bidPrice}'");
-                    LastCandleLongOrder = candleTime;
-                    return;
-                }
-
-                m_logger.LogWarning($"{Name}: {Symbol} Error getting order status: {orderStatusRes.Error}");
-                return;
-            }
-            
-            m_logger.LogInformation($"{Name}: {Symbol} could not place buy order.");
+            bool placed = await m_cbFuturesRestClient.PlaceLimitBuyOrderAsync(Symbol, qty, bidPrice, cancel);
+            if(placed)
+                LastCandleLongOrder = candleTime;
         }
 
         private async Task PlaceLimitSellOrderAsync(decimal qty, decimal askPrice, DateTime candleTime, CancellationToken cancel)
         {
-            for (int attempt = 0; attempt < m_options.Value.PlaceOrderAttempts; attempt++)
-            {
-                m_logger.LogInformation($"{Name}: {Symbol} Placing limit sell order for '{qty}' @ '{askPrice}' attempt: {attempt}");
-                var sellOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
-                    .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
-                        category: Category.Linear,
-                        symbol: Symbol,
-                        side: Bybit.Net.Enums.OrderSide.Sell,
-                        type: NewOrderType.Limit,
-                        quantity: qty,
-                        price: askPrice,
-                        positionIdx: PositionIdx.SellHedgeMode,
-                        reduceOnly: false,
-                        timeInForce: TimeInForce.PostOnly,
-                        ct: cancel));
-                if (!sellOrderRes.GetResultOrError(out var sellOrder, out _))
-                    continue;
-                var orderStatusRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrder>.RetryTooManyVisitsBybitResponse
-                    .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
-                        category: Category.Linear,
-                        symbol: Symbol,
-                        orderId: sellOrder.OrderId,
-                        ct: cancel));
-                if (orderStatusRes.GetResultOrError(out var orderStatus, out _))
-                {
-                    var order = orderStatus.List
-                        .FirstOrDefault(x => string.Equals(x.OrderId, sellOrder.OrderId, StringComparison.Ordinal));
-                    if (order != null && order.Status == OrderStatus.Cancelled)
-                    {
-                        m_logger.LogInformation($"{Name}: {Symbol} Sell order was cancelled. Adjusting price.");
-                        var orderBook = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderbook>.RetryTooManyVisits
-                            .ExecuteAsync(async () =>
-                                await m_bybitRestClient.V5Api.ExchangeData.GetOrderbookAsync(Category.Linear, Symbol,
-                                    limit: 1, cancel));
-                        if (orderBook.GetResultOrError(out var orderBookData, out _))
-                        {
-                            var bestAsk = orderBookData.Asks.FirstOrDefault();
-                            if (bestAsk != null)
-                            {
-                                askPrice = bestAsk.Price;
-                            }
-                        }
-                        continue;
-                    }
-                    m_logger.LogInformation($"{Name}: {Symbol} Sell order placed for '{qty}' @ '{askPrice}'");
-                    LastCandleShortOrder = candleTime;
-                    return;
-                }
-
-                m_logger.LogWarning($"{Name}: {Symbol} Error getting order status: {orderStatusRes.Error}");
-                return;
-            }
+            bool placed = await m_cbFuturesRestClient.PlaceLimitSellOrderAsync(Symbol, qty, askPrice, cancel);
+            if(placed)
+                LastCandleShortOrder = candleTime;
         }
 
         private async Task PlaceLongTakeProfitOrderAsync(decimal qty, decimal price, CancellationToken cancel)
         {
-            var sellOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits.ExecuteAsync(async () =>
-                await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
-                    category: Category.Linear,
-                    symbol: Symbol,
-                    side: Bybit.Net.Enums.OrderSide.Sell,
-                    type: NewOrderType.Limit,
-                    quantity: qty,
-                    price: price,
-                    positionIdx: PositionIdx.BuyHedgeMode,
-                    reduceOnly: true,
-                    timeInForce: TimeInForce.PostOnly,
-                    ct: cancel));
-            if (sellOrderRes.GetResultOrError(out _, out var error))
-                return;
-            m_logger.LogWarning($"{Name}: {Symbol} Failed to place long take profit order: {error}");
+            await m_cbFuturesRestClient.PlaceLongTakeProfitOrderAsync(Symbol, qty, price, cancel);
         }
 
         private async Task PlaceShortTakeProfitOrderAsync(decimal qty, decimal price, CancellationToken cancel)
         {
-            var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits.ExecuteAsync(async () =>
-                await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
-                    category: Category.Linear,
-                    symbol: Symbol,
-                    side: Bybit.Net.Enums.OrderSide.Buy,
-                    type: NewOrderType.Limit,
-                    quantity: qty,
-                    price: price,
-                    positionIdx: PositionIdx.SellHedgeMode,
-                    reduceOnly: true,
-                    timeInForce: TimeInForce.PostOnly,
-                    ct: cancel));
-            if (buyOrderRes.GetResultOrError(out _, out var error))
-                return;
-            m_logger.LogWarning($"{Name}: {Symbol} Failed to place short take profit order: {error}");
+            await m_cbFuturesRestClient.PlaceShortTakeProfitOrderAsync(Symbol, qty, price, cancel);
         }
 
         private bool NoPositionIncreaseOrderForCandle(Quote candle, DateTime? lastTrade)

@@ -2,8 +2,7 @@
 {
     public enum PositionMode
     {
+        Hedge,
         OneWay,
-        BothSideBuy,
-        BothSideSell
     }
 }

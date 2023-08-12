@@ -1,5 +1,5 @@
-﻿using Bybit.Net.Interfaces.Clients;
-using CryptoBlade.Configuration;
+﻿using CryptoBlade.Configuration;
+using CryptoBlade.Exchanges;
 using CryptoBlade.Strategies.Common;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
@@ -9,12 +9,12 @@ namespace CryptoBlade.Strategies
     public class TradingStrategyFactory : ITradingStrategyFactory
     {
         private readonly IWalletManager m_walletManager;
-        private readonly IBybitRestClient m_bybitRestClient;
+        private readonly ICbFuturesRestClient m_restClient;
 
-        public TradingStrategyFactory(IWalletManager walletManager, IBybitRestClient bybitRestClient)
+        public TradingStrategyFactory(IWalletManager walletManager, ICbFuturesRestClient restClient)
         {
             m_walletManager = walletManager;
-            m_bybitRestClient = bybitRestClient;
+            m_restClient = restClient;
         }
 
         public ITradingStrategy CreateStrategy(TradingBotOptions config, string symbol)
@@ -40,7 +40,7 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
                 });
-            return new AutoHedgeStrategy(options, symbol, m_walletManager, m_bybitRestClient);
+            return new AutoHedgeStrategy(options, symbol, m_walletManager, m_restClient);
         }
 
         private ITradingStrategy CreateMfiRsiCandlePreciseStrategy(TradingBotOptions config, string symbol)
@@ -51,7 +51,7 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
                 });
-            return new MfiRsiCandlePreciseTradingStrategy(options, symbol, m_walletManager, m_bybitRestClient);
+            return new MfiRsiCandlePreciseTradingStrategy(options, symbol, m_walletManager, m_restClient);
         }
 
         private ITradingStrategy CreateMfiRsiEriTrendPreciseStrategy(TradingBotOptions config, string symbol)
@@ -62,7 +62,7 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
                 });
-            return new MfiRsiEriTrendTradingStrategy(options, symbol, m_walletManager, m_bybitRestClient);
+            return new MfiRsiEriTrendTradingStrategy(options, symbol, m_walletManager, m_restClient);
         }
 
         private IOptions<TOptions> CreateTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup) 
@@ -74,7 +74,6 @@ namespace CryptoBlade.Strategies
                 WalletExposureLong = config.WalletExposureLong,
                 WalletExposureShort = config.WalletExposureShort,
                 ForceMinQty = config.ForceMinQty,
-                PlaceOrderAttempts = config.PlaceOrderAttempts,
                 TradingMode = GetTradingMode(config, symbol),
                 MaxAbsFundingRate = config.MaxAbsFundingRate,
                 FeeRate = config.FeeRate,

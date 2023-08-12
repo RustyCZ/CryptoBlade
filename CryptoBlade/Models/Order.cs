@@ -16,7 +16,7 @@ namespace CryptoBlade.Models
 
         public OrderSide Side { get; set; }
 
-        public PositionMode? PositionMode { get; set; }
+        public OrderPositionMode? PositionMode { get; set; }
 
         public OrderStatus Status { get; set; }
 

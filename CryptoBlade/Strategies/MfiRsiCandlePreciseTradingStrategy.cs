@@ -6,6 +6,7 @@ using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
 using Skender.Stock.Indicators;
 using System.Threading;
+using CryptoBlade.Exchanges;
 
 namespace CryptoBlade.Strategies
 {
@@ -15,7 +16,7 @@ namespace CryptoBlade.Strategies
         private const int c_candlePeriod = 50;
 
         public MfiRsiCandlePreciseTradingStrategy(IOptions<MfiRsiCandlePreciseTradingStrategyOptions> options,
-            string symbol, IWalletManager walletManager, IBybitRestClient restClient)
+            string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient)
             : base(options, symbol, GetRequiredTimeFrames(), walletManager, restClient)
         {
             m_options = options;

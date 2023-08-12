@@ -230,18 +230,18 @@ namespace CryptoBlade.Mapping
             }
         }
 
-        public static PositionMode? ToPositionMode(this Bybit.Net.Enums.PositionMode? value)
+        public static OrderPositionMode? ToPositionMode(this Bybit.Net.Enums.PositionMode? value)
         {
             if(value == null)
                 return null;
             switch (value)
             {
                 case Bybit.Net.Enums.PositionMode.OneWay:
-                    return PositionMode.OneWay;
+                    return OrderPositionMode.OneWay;
                 case Bybit.Net.Enums.PositionMode.BothSideBuy:
-                    return PositionMode.BothSideBuy;
+                    return OrderPositionMode.BothSideBuy;
                 case Bybit.Net.Enums.PositionMode.BothSideSell:
-                    return PositionMode.BothSideSell;
+                    return OrderPositionMode.BothSideSell;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(value), value, null);
             }
@@ -317,6 +317,32 @@ namespace CryptoBlade.Mapping
                     return TradeMode.Isolated;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(value), value, null);
+            }
+        }
+
+        public static Bybit.Net.Enums.V5.PositionMode ToBybitPositionMode(this PositionMode positionMode)
+        {
+            switch (positionMode)
+            {
+                case PositionMode.Hedge:
+                    return Bybit.Net.Enums.V5.PositionMode.BothSides;
+                case PositionMode.OneWay:
+                    return Bybit.Net.Enums.V5.PositionMode.MergedSingle;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(positionMode), positionMode, null);
+            }
+        }
+
+        public static Bybit.Net.Enums.TradeMode ToBybitTradeMode(this TradeMode tradeMode)
+        {
+            switch (tradeMode)
+            {
+                case TradeMode.CrossMargin:
+                    return Bybit.Net.Enums.TradeMode.CrossMargin;
+                case TradeMode.Isolated:
+                    return Bybit.Net.Enums.TradeMode.Isolated;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(tradeMode), tradeMode, null);
             }
         }
     }

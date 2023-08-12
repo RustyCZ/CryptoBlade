@@ -1,5 +1,6 @@
 using Bybit.Net;
 using CryptoBlade.Configuration;
+using CryptoBlade.Exchanges;
 using CryptoBlade.HealthChecks;
 using CryptoBlade.Helpers;
 using CryptoBlade.Services;
@@ -7,9 +8,6 @@ using CryptoBlade.Strategies;
 using CryptoBlade.Strategies.Wallet;
 using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Objects;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Diagnostics.HealthChecks;
-using Polly.Bulkhead;
 
 namespace CryptoBlade
 {
@@ -28,6 +26,12 @@ namespace CryptoBlade
             var tradingBotOptions = builder.Configuration.GetSection("TradingBot").Get<TradingBotOptions>();
             TradingMode tradingMode = tradingBotOptions!.TradingMode;
 
+            var exchangeAccount =
+                tradingBotOptions.Accounts.FirstOrDefault(x => string.Equals(x.Name, tradingBotOptions.AccountName, StringComparison.Ordinal));
+            string apiKey = exchangeAccount?.ApiKey ?? string.Empty;
+            string apiSecret = exchangeAccount?.ApiSecret ?? string.Empty;
+            bool hasApiCredentials = !string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(apiSecret);
+
             // Add services to the container.
             builder.Services.AddRazorPages();
             builder.Services.AddHealthChecks()
@@ -43,25 +47,30 @@ namespace CryptoBlade
             }
             builder.Services.Configure<TradingBotOptions>(builder.Configuration.GetSection("TradingBot"));
             builder.Services.AddSingleton<ITradingStrategyFactory, TradingStrategyFactory>();
-            builder.Services.AddSingleton<IWalletManager, WalletManager>();
-            
-            var exchangeAccount =
-                tradingBotOptions?.Accounts.FirstOrDefault(x => string.Equals(x.Name, tradingBotOptions.AccountName, StringComparison.Ordinal));
-            string apiKey = exchangeAccount?.ApiKey ?? string.Empty;
-            string apiSecret = exchangeAccount?.ApiSecret ?? string.Empty;
+            if (hasApiCredentials)
+                builder.Services.AddSingleton<IWalletManager, WalletManager>();
+            else
+                builder.Services.AddSingleton<IWalletManager, NullWalletManager>();
+            builder.Services.AddSingleton<ICbFuturesRestClient, BybitCbFuturesRestClient>();
+            builder.Services.AddOptions<BybitCbFuturesRestClientOptions>().Configure(options =>
+            {
+                options.PlaceOrderAttempts = tradingBotOptions.PlaceOrderAttempts;
+            });
 
             builder.Services.AddBybit(
                     restOptions =>
                     {
                         restOptions.V5Options.RateLimitingBehaviour = RateLimitingBehaviour.Wait;
-                        restOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
+                        if(hasApiCredentials)
+                            restOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
                         restOptions.ReceiveWindow = TimeSpan.FromSeconds(10);
                         restOptions.AutoTimestamp = true;
                         restOptions.TimestampRecalculationInterval = TimeSpan.FromSeconds(10);
                     },
                     socketClientOptions =>
                     {
-                        socketClientOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
+                        if (hasApiCredentials)
+                            socketClientOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
                     })
                 .AddLogging(options =>
                 {
@@ -76,6 +85,9 @@ namespace CryptoBlade
             var app = builder.Build();
             var lf = app.Services.GetRequiredService<ILoggerFactory>();
             ApplicationLogging.LoggerFactory = lf;
+
+            if (!hasApiCredentials)
+                app.Logger.LogWarning("No API credentials found!.");
 
             // Configure the HTTP request pipeline.
             if (!app.Environment.IsDevelopment())

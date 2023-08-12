@@ -1,4 +1,5 @@
 ﻿using Bybit.Net.Interfaces.Clients;
+using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
 using CryptoBlade.Models;
 using CryptoBlade.Strategies.Common;
@@ -21,7 +22,7 @@ namespace CryptoBlade.Strategies
         private const int c_candlePeriod = 200;
 
         public MfiRsiEriTrendTradingStrategy(IOptions<MfiRsiEriTrendTradingStrategyOptions> options, 
-            string symbol, IWalletManager walletManager, IBybitRestClient restClient) 
+            string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient) 
             : base(options, symbol, GetRequiredTimeFrames(), walletManager, restClient)
         {
             m_options = options;

@@ -1,9 +1,11 @@
 ﻿using Bybit.Net.Enums;
 using Bybit.Net.Enums.V5;
 using Bybit.Net.Interfaces.Clients;
+using CryptoBlade.Helpers;
 using CryptoBlade.Mapping;
 using CryptoBlade.Models;
 using CryptoBlade.Strategies.Policies;
+using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
 using OrderSide = Bybit.Net.Enums.OrderSide;
 using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
@@ -294,6 +296,33 @@ namespace CryptoBlade.Exchanges
             m_logger.LogWarning($"{symbol} Failed to place short take profit order: {error}");
 
             return false;
+        }
+
+        public async Task<Balance> GetBalancesAsync(CancellationToken cancel = default)
+        {
+            var balance = await ExchangePolicies.RetryForever
+                .ExecuteAsync(async () =>
+                {
+                    var balanceResult = await m_bybitRestClient.V5Api.Account.GetBalancesAsync(AccountType.Contract, null,
+                        cancel);
+                    if (balanceResult.GetResultOrError(out var data, out var error))
+                        return data;
+                    throw new InvalidOperationException(error.Message);
+                });
+            foreach (var b in balance.List)
+            {
+                if (b.AccountType == AccountType.Contract)
+                {
+                    var asset = b.Assets.FirstOrDefault(x => string.Equals(x.Asset, Assets.QuoteAsset, StringComparison.OrdinalIgnoreCase));
+                    if (asset != null)
+                    {
+                        var contract = asset.ToBalance();
+                        return contract;
+                    }
+                }
+            }
+
+            return new Balance();
         }
     }
 }

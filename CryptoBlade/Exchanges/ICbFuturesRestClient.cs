@@ -1,7 +1,5 @@
-﻿using Bybit.Net.Enums;
-using CryptoExchange.Net.Objects;
-using System;
-using CryptoBlade.Models;
+﻿using CryptoBlade.Models;
+using CryptoBlade.Strategies.Wallet;
 
 namespace CryptoBlade.Exchanges
 {
@@ -49,5 +47,7 @@ namespace CryptoBlade.Exchanges
             decimal qty,
             decimal price,
             CancellationToken cancel = default);
+
+        Task<Balance> GetBalancesAsync(CancellationToken cancel = default);
     }
 }

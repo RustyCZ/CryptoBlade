@@ -56,6 +56,7 @@ namespace CryptoBlade
             {
                 options.PlaceOrderAttempts = tradingBotOptions.PlaceOrderAttempts;
             });
+            builder.Services.AddSingleton<ICbFuturesSocketClient, BybitCbFuturesSocketClient>();
 
             builder.Services.AddBybit(
                     restOptions =>

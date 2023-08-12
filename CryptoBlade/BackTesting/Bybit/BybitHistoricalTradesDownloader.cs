@@ -75,7 +75,7 @@ namespace CryptoBlade.BackTesting.Bybit
                 var result = records
                     .Select(x => new Trade
                     {
-                        Timestamp = x.Timestamp,
+                        TimestampDateTime = x.TimestampDateTime,
                         Size = x.Size,
                         Price = x.Price
                     }).ToArray();

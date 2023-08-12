@@ -5,7 +5,7 @@ namespace CryptoBlade.BackTesting.Bybit
     public class BybitHistoricalTick
     {
         [Name("timestamp")]
-        public decimal Timestamp { get; set; }
+        public double Timestamp { get; set; }
 
         [Name("size")]
         public decimal Size { get; set; }
@@ -13,6 +13,6 @@ namespace CryptoBlade.BackTesting.Bybit
         [Name("price")]
         public decimal Price { get; set; }
 
-        public DateTime TimestampDateTime => DateTime.UnixEpoch.AddSeconds((double)Timestamp);
+        public DateTime TimestampDateTime => DateTime.UnixEpoch.AddSeconds(Timestamp);
     }
 }

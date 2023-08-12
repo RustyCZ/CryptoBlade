@@ -40,9 +40,9 @@ namespace CryptoBlade.Tests.BackTesting.Bybit
             await downloader.DownloadRangeAsync(symbol, start, end);
             var missingDays = await storage.FindMissingDaysAsync(symbol, start, end);
             Assert.Empty(missingDays);
-            var trades = await storage.ReadAsync(symbol, new DateTime(2023, 7, 1));
+            var trades = await storage.ReadAsync(symbol, start);
             Assert.NotEmpty(trades);
-            Assert.All(trades, t => Assert.True(t.TimestampDateTime >= new DateTime(2023, 7, 1) && t.TimestampDateTime < new DateTime(2023, 1, 2)));
+            Assert.All(trades, t => Assert.True(t.TimestampDateTime >= start && t.TimestampDateTime < start.AddDays(1)));
         }
     }
 }

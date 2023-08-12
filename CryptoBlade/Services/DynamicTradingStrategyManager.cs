@@ -1,6 +1,7 @@
 ﻿using Bert.RateLimiters;
 using Bybit.Net.Interfaces.Clients;
 using CryptoBlade.Configuration;
+using CryptoBlade.Exchanges;
 using CryptoBlade.Strategies;
 using CryptoBlade.Strategies.Common;
 using CryptoBlade.Strategies.Wallet;
@@ -16,10 +17,10 @@ namespace CryptoBlade.Services
         public DynamicTradingStrategyManager(IOptions<TradingBotOptions> options, 
             ILogger<DynamicTradingStrategyManager> logger, 
             ITradingStrategyFactory strategyFactory, 
-            IBybitRestClient bybitRestClient, 
+            ICbFuturesRestClient restClient, 
             IBybitSocketClient bybitSocketClient, 
             IWalletManager walletManager) 
-            : base(options, logger, strategyFactory, bybitRestClient, bybitSocketClient, walletManager)
+            : base(options, logger, strategyFactory, restClient, bybitSocketClient, walletManager)
         {
             m_options = options;
             m_logger = logger;

@@ -49,5 +49,19 @@ namespace CryptoBlade.Exchanges
             CancellationToken cancel = default);
 
         Task<Balance> GetBalancesAsync(CancellationToken cancel = default);
+
+        Task<SymbolInfo[]> GetSymbolInfoAsync(CancellationToken cancel = default);
+
+        Task<Candle[]> GetKlinesAsync(
+            string symbol,
+            TimeFrame interval,
+            int limit, 
+            CancellationToken cancel = default);
+
+        Task<Ticker> GetTickerAsync(string symbol, CancellationToken cancel = default);
+
+        Task<Order[]> GetOrdersAsync(CancellationToken cancel = default);
+
+        Task<Position[]> GetPositionsAsync(CancellationToken cancel = default);
     }
 }

@@ -6,9 +6,12 @@ using CryptoBlade.Mapping;
 using CryptoBlade.Models;
 using CryptoBlade.Strategies.Policies;
 using CryptoBlade.Strategies.Wallet;
+using CryptoExchange.Net.CommonObjects;
 using Microsoft.Extensions.Options;
+using Order = CryptoBlade.Models.Order;
 using OrderSide = Bybit.Net.Enums.OrderSide;
 using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
+using Position = CryptoBlade.Models.Position;
 using PositionMode = CryptoBlade.Models.PositionMode;
 using TradeMode = CryptoBlade.Models.TradeMode;
 
@@ -298,7 +301,7 @@ namespace CryptoBlade.Exchanges
             return false;
         }
 
-        public async Task<Balance> GetBalancesAsync(CancellationToken cancel = default)
+        public async Task<Strategies.Wallet.Balance> GetBalancesAsync(CancellationToken cancel = default)
         {
             var balance = await ExchangePolicies.RetryForever
                 .ExecuteAsync(async () =>
@@ -322,7 +325,154 @@ namespace CryptoBlade.Exchanges
                 }
             }
 
-            return new Balance();
+            return new Strategies.Wallet.Balance();
+        }
+
+        public async Task<SymbolInfo[]> GetSymbolInfoAsync(CancellationToken cancel = default)
+        {
+            var symbolData = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                List<SymbolInfo> symbolInfo = new List<SymbolInfo>();
+                string? cursor = null;
+                while (true)
+                {
+                    var symbolsResult = await m_bybitRestClient.V5Api.ExchangeData.GetLinearInverseSymbolsAsync(
+                        m_category,
+                        null,
+                        null,
+                        null,
+                        cursor,
+                        cancel);
+                    if (!symbolsResult.GetResultOrError(out var data, out var error))
+                        throw new InvalidOperationException(error.Message);
+                    var s = data.List
+                        .Where(x => string.Equals(Assets.QuoteAsset, x.QuoteAsset))
+                        .Select(x => x.ToSymbolInfo());
+                    symbolInfo.AddRange(s);
+                    if (string.IsNullOrWhiteSpace(data.NextPageCursor))
+                        break;
+                    cursor = data.NextPageCursor;
+                }
+
+                return symbolInfo.ToArray();
+            });
+
+            return symbolData;
+        }
+
+        public async Task<Candle[]> GetKlinesAsync(
+            string symbol, 
+            TimeFrame interval,
+            int limit, 
+            CancellationToken cancel = default)
+        {
+            var candles = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                var dataResponse = await m_bybitRestClient.V5Api.ExchangeData.GetKlinesAsync(
+                    m_category,
+                    symbol,
+                    interval.ToKlineInterval(),
+                    null,
+                    null,
+                    limit,
+                    cancel);
+                if (!dataResponse.GetResultOrError(out var data, out var error))
+                {
+                    throw new InvalidOperationException(error.Message);
+                }
+
+                // we don't want the last candle, because it's not closed yet
+                var candleData = data.List.Skip(1).Reverse().Select(x => x.ToCandle(interval))
+                    .ToArray();
+                return candleData;
+            });
+
+            return candles;
+        }
+
+        public async Task<Models.Ticker> GetTickerAsync(string symbol, CancellationToken cancel = default)
+        {
+            var priceData = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                var priceDataRes = await m_bybitRestClient.V5Api.ExchangeData.GetLinearInverseTickersAsync(
+                    m_category,
+                    symbol, 
+                    null,
+                    null, 
+                    cancel);
+                if (priceDataRes.GetResultOrError(out var data, out var error))
+                {
+                    return data.List;
+                }
+
+                throw new InvalidOperationException(error.Message);
+            });
+
+            var ticker = priceData.Select(x => x.ToTicker()).First();
+
+            return ticker;
+        }
+
+        public async Task<Order[]> GetOrdersAsync(CancellationToken cancel = default)
+        {
+            var orders = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                List<Order> orders = new List<Order>();
+                string? cursor = null;
+                while (true)
+                {
+                    var ordersResult = await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
+                        m_category,
+                        settleAsset: Assets.QuoteAsset,
+                        cursor: cursor,
+                        ct: cancel);
+                    if (!ordersResult.GetResultOrError(out var data, out var error))
+                        throw new InvalidOperationException(error.Message);
+                    orders.AddRange(data.List.Select(x => x.ToOrder()));
+                    if (string.IsNullOrWhiteSpace(data.NextPageCursor))
+                        break;
+                    cursor = data.NextPageCursor;
+                }
+
+                return orders.ToArray();
+            });
+
+            return orders;
+        }
+
+        public async Task<Position[]> GetPositionsAsync(CancellationToken cancel = default)
+        {
+            var positions = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                List<Position> positions = new List<Position>();
+                string? cursor = null;
+                while (true)
+                {
+                    var positionResult = await m_bybitRestClient.V5Api.Trading.GetPositionsAsync(
+                        m_category,
+                        settleAsset: Assets.QuoteAsset,
+                        cursor: cursor,
+                        ct: cancel);
+                    if (!positionResult.GetResultOrError(out var data, out var error))
+                        throw new InvalidOperationException(error.Message);
+                    foreach (var bybitPosition in data.List)
+                    {
+                        var position = bybitPosition.ToPosition();
+                        if (position == null)
+                            m_logger.LogWarning($"Could not convert position for symbol: {bybitPosition.Symbol}");
+                        else
+                            positions.Add(position);
+                    }
+
+                    if (string.IsNullOrWhiteSpace(data.NextPageCursor))
+                        break;
+                    cursor = data.NextPageCursor;
+                }
+
+                return positions.ToArray();
+            });
+
+            return positions;
         }
     }
 }

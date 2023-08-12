@@ -8,6 +8,7 @@ using Bybit.Net.Interfaces.Clients;
 using Bybit.Net.Objects.Models.Socket.Derivatives;
 using Bybit.Net.Objects.Models.V5;
 using CryptoBlade.Configuration;
+using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
 using CryptoBlade.Mapping;
 using CryptoBlade.Models;
@@ -28,7 +29,7 @@ namespace CryptoBlade.Services
         private readonly ILogger<TradeStrategyManagerBase> m_logger;
         private readonly Dictionary<string, ITradingStrategy> m_strategies;
         private readonly ITradingStrategyFactory m_strategyFactory;
-        private readonly IBybitRestClient m_bybitRestClient;
+        private readonly ICbFuturesRestClient m_restClient;
         private readonly IBybitSocketClient m_bybitSocketClient;
         private readonly IOptions<TradingBotOptions> m_options;
         private CancellationTokenSource? m_cancelSource;
@@ -43,16 +44,16 @@ namespace CryptoBlade.Services
         protected TradeStrategyManagerBase(IOptions<TradingBotOptions> options,
             ILogger<TradeStrategyManagerBase> logger,
             ITradingStrategyFactory strategyFactory,
-            IBybitRestClient bybitRestClient,
+            ICbFuturesRestClient restClient,
             IBybitSocketClient bybitSocketClient, 
             IWalletManager walletManager)
         {
             m_lock = new AsyncLock();
             m_options = options;
             m_strategyFactory = strategyFactory;
-            m_bybitRestClient = bybitRestClient;
             m_bybitSocketClient = bybitSocketClient;
             m_walletManager = walletManager;
+            m_restClient = restClient;
             m_logger = logger;
             m_strategies = new Dictionary<string, ITradingStrategy>();
             m_subscriptions = new List<UpdateSubscription>();
@@ -236,32 +237,7 @@ namespace CryptoBlade.Services
 
         private async Task<SymbolInfo[]> GetSymbolInfoAsync(CancellationToken cancel)
         {
-            var symbolData = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
-            {
-                List<SymbolInfo> symbolInfo = new List<SymbolInfo>();
-                string? cursor = null;
-                while (true)
-                {
-                    var symbolsResult = await m_bybitRestClient.V5Api.ExchangeData.GetLinearInverseSymbolsAsync(
-                        Category.Linear,
-                        null,
-                        null,
-                        null,
-                        cursor,
-                        cancel);
-                    if (!symbolsResult.GetResultOrError(out var data, out var error))
-                        throw new InvalidOperationException(error.Message);
-                    var s = data.List
-                        .Where(x => string.Equals(Assets.QuoteAsset, x.QuoteAsset))
-                        .Select(x => x.ToSymbolInfo());
-                    symbolInfo.AddRange(s);
-                    if (string.IsNullOrWhiteSpace(data.NextPageCursor))
-                        break;
-                    cursor = data.NextPageCursor;
-                }
-
-                return symbolInfo.ToArray();
-            });
+            var symbolData = await m_restClient.GetSymbolInfoAsync(cancel);
 
             return symbolData;
         }
@@ -335,105 +311,25 @@ namespace CryptoBlade.Services
             List<Candle> allCandles = new List<Candle>();
             foreach (var timeFrame in timeFrames)
             {
-                var candles = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
-                {
-                    var dataResponse = await m_bybitRestClient.V5Api.ExchangeData.GetKlinesAsync(
-                        Category.Linear,
-                        symbol,
-                        timeFrame.TimeFrame.ToKlineInterval(),
-                        null,
-                        null,
-                        timeFrame.WindowSize + 1,
-                        cancel);
-                    if (!dataResponse.GetResultOrError(out var data, out var error))
-                    {
-                        throw new InvalidOperationException(error.Message);
-                    }
-
-                    // we don't want the last candle, because it's not closed yet
-                    var candleData = data.List.Skip(1).Reverse().Select(x => x.ToCandle(timeFrame.TimeFrame))
-                        .ToArray();
-                    return candleData;
-                });
+                var candles = await m_restClient.GetKlinesAsync(symbol, timeFrame.TimeFrame, timeFrame.WindowSize + 1, cancel);
+                
                 allCandles.AddRange(candles);
             }
 
-            var priceData = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
-            {
-                var priceDataRes = await m_bybitRestClient.V5Api.ExchangeData.GetLinearInverseTickersAsync(
-                    Category.Linear,
-                    symbol, null,
-                    null, cancel);
-                if (priceDataRes.GetResultOrError(out var data, out var error))
-                {
-                    return data.List;
-                }
-
-                throw new InvalidOperationException(error.Message);
-            });
-
-            var ticker = priceData.Select(x => x.ToTicker()).First();
+            var ticker = await m_restClient.GetTickerAsync(symbol, cancel);
             await strategy.InitializeAsync(allCandles.ToArray(), ticker, cancel);
         }
 
         private async Task<Order[]> GetOrdersAsync(CancellationToken cancel)
         {
-            var orders = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
-            {
-                List<Order> orders = new List<Order>();
-                string? cursor = null;
-                while (true)
-                {
-                    var ordersResult = await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
-                        Category.Linear,
-                        settleAsset: Assets.QuoteAsset,
-                        cursor: cursor,
-                        ct: cancel);
-                    if (!ordersResult.GetResultOrError(out var data, out var error))
-                        throw new InvalidOperationException(error.Message);
-                    orders.AddRange(data.List.Select(x => x.ToOrder()));
-                    if (string.IsNullOrWhiteSpace(data.NextPageCursor))
-                        break;
-                    cursor = data.NextPageCursor;
-                }
-
-                return orders.ToArray();
-            });
+            var orders = await m_restClient.GetOrdersAsync(cancel);
 
             return orders;
         }
 
         private async Task<Position[]> GetOpenPositions(CancellationToken cancel)
         {
-            var positions = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
-            {
-                List<Position> positions = new List<Position>();
-                string? cursor = null;
-                while (true)
-                {
-                    var positionResult = await m_bybitRestClient.V5Api.Trading.GetPositionsAsync(
-                        Category.Linear,
-                        settleAsset: Assets.QuoteAsset,
-                        cursor: cursor,
-                        ct: cancel);
-                    if (!positionResult.GetResultOrError(out var data, out var error))
-                        throw new InvalidOperationException(error.Message);
-                    foreach (var bybitPosition in data.List)
-                    {
-                        var position = bybitPosition.ToPosition();
-                        if(position == null)
-                            m_logger.LogWarning($"Could not convert position for symbol: {bybitPosition.Symbol}");
-                        else
-                            positions.Add(position);
-                    }
-
-                    if (string.IsNullOrWhiteSpace(data.NextPageCursor))
-                        break;
-                    cursor = data.NextPageCursor;
-                }
-
-                return positions.ToArray();
-            });
+            var positions = await m_restClient.GetPositionsAsync(cancel);
 
             return positions;
         }

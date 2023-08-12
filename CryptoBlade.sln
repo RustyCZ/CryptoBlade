@@ -5,6 +5,8 @@ VisualStudioVersion = 17.4.33213.308
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "CryptoBlade", "CryptoBlade\CryptoBlade.csproj", "{A7B244F4-CB99-4436-A83A-DA36C51C2223}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CryptoBlade.Tests", "CryptoBlade.Tests\CryptoBlade.Tests.csproj", "{EE43B248-8108-4DF5-AB65-8E1F1001CCCD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +17,10 @@ Global
 		{A7B244F4-CB99-4436-A83A-DA36C51C2223}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A7B244F4-CB99-4436-A83A-DA36C51C2223}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A7B244F4-CB99-4436-A83A-DA36C51C2223}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EE43B248-8108-4DF5-AB65-8E1F1001CCCD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EE43B248-8108-4DF5-AB65-8E1F1001CCCD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EE43B248-8108-4DF5-AB65-8E1F1001CCCD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EE43B248-8108-4DF5-AB65-8E1F1001CCCD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

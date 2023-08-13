@@ -161,8 +161,15 @@ namespace CryptoBlade.Strategies.Common
 
         public async Task ExecuteAsync(bool allowLongPositionOpen, bool allowShortPositionOpen, CancellationToken cancel)
         {
-            int jitter = m_random.Next(500, 5500);
-            await Task.Delay(jitter, cancel); // random delay to lower probability of hitting rate limits until we have a better solution
+            bool isLive = m_options.Value.TradingMode == TradingMode.Normal 
+                          || m_options.Value.TradingMode == TradingMode.Dynamic
+                          || m_options.Value.TradingMode == TradingMode.Readonly;
+            if (isLive)
+            {
+                int jitter = m_random.Next(500, 5500);
+                await Task.Delay(jitter, cancel); // random delay to lower probability of hitting rate limits until we have a better solution
+            }
+                
             m_logger.LogInformation($"{Name}: {Symbol} Executing strategy. TradingMode: {m_options.Value.TradingMode}");
 
             var buyOrders = BuyOrders;
@@ -180,7 +187,7 @@ namespace CryptoBlade.Strategies.Common
             var shortTakeProfitOrders = ShortTakeProfitOrders;
             decimal? longTakeProfitPrice = LongTakeProfitPrice;
             decimal? shortTakeProfitPrice = ShortTakeProfitPrice;
-            DateTime utcNow = DateTime.UtcNow;
+            DateTime utcNow = ticker?.Timestamp ?? DateTime.UtcNow;
             TimeSpan replacementTime = TimeSpan.FromMinutes(4.5);
             decimal? maxShortQty = null;
             decimal? maxLongQty = null;
@@ -236,12 +243,13 @@ namespace CryptoBlade.Strategies.Common
             }
 
             bool canOpenLongPosition = (m_options.Value.TradingMode == TradingMode.Normal
-                                        || m_options.Value.TradingMode == TradingMode.Dynamic) 
+                                        || m_options.Value.TradingMode == TradingMode.Dynamic
+                                        || m_options.Value.TradingMode == TradingMode.DynamicBackTest) 
                                        && allowLongPositionOpen;
             bool canOpenShortPosition = (m_options.Value.TradingMode == TradingMode.Normal 
-                                         || m_options.Value.TradingMode == TradingMode.Dynamic) 
+                                         || m_options.Value.TradingMode == TradingMode.Dynamic
+                                         || m_options.Value.TradingMode == TradingMode.DynamicBackTest) 
                                         && allowShortPositionOpen;
-
             if (ticker != null && lastPrimaryQuote != null)
             {
                 if (hasBuySignal
@@ -295,7 +303,12 @@ namespace CryptoBlade.Strategies.Common
                 }
             }
 
-            if (longPosition != null && longTakeProfitPrice.HasValue)
+            bool hasPlacedOrder = lastPrimaryQuote != null 
+                                  && (LastCandleLongOrder.HasValue && LastCandleLongOrder.Value == lastPrimaryQuote.Date 
+                                      || LastCandleShortOrder.HasValue && LastCandleShortOrder.Value == lastPrimaryQuote.Date);
+            // do not place take profit orders if we have placed an order for the current candle
+            // quantity would not be valid
+            if (longPosition != null && longTakeProfitPrice.HasValue && !hasPlacedOrder)
             {
                 decimal longTakeProfitQty = longTakeProfitOrders.Length > 0 ? longTakeProfitOrders.Sum(x => x.Quantity) : 0;
                 if (longTakeProfitQty != longPosition.Quantity || NextLongProfitReplacement == null || (NextLongProfitReplacement != null && utcNow > NextLongProfitReplacement))
@@ -311,7 +324,7 @@ namespace CryptoBlade.Strategies.Common
                 }
             }
 
-            if (shortPosition != null && shortTakeProfitPrice.HasValue)
+            if (shortPosition != null && shortTakeProfitPrice.HasValue && !hasPlacedOrder)
             {
                 decimal shortTakeProfitQty = shortTakeProfitOrders.Length > 0 ? shortTakeProfitOrders.Sum(x => x.Quantity) : 0;
                 if ((shortTakeProfitQty != shortPosition.Quantity) || NextShortProfitReplacement == null || (NextShortProfitReplacement != null && utcNow > NextShortProfitReplacement))
@@ -349,7 +362,7 @@ namespace CryptoBlade.Strategies.Common
         public async Task UpdatePriceDataSync(Ticker ticker, CancellationToken cancel)
         {
             Ticker = ticker;
-            LastTickerUpdate = DateTime.UtcNow;
+            LastTickerUpdate = ticker.Timestamp;
             if (QueueInitialized)
             {
                 await EvaluateSignalsAsync(cancel);
@@ -436,8 +449,9 @@ namespace CryptoBlade.Strategies.Common
                 bool consistent = QuoteQueues[bufferedCandle.TimeFrame].Enqueue(bufferedCandle.ToQuote());
                 if (!consistent)
                     ConsistentData = false;
+                if(bufferedCandle.TimeFrame == TimeFrame.OneMinute)
+                    LastCandleUpdate = bufferedCandle.StartTime + bufferedCandle.TimeFrame.ToTimeSpan();
             }
-            LastCandleUpdate = DateTime.UtcNow;
 
             return Task.CompletedTask;
         }

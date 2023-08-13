@@ -1,5 +1,6 @@
 ﻿using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
+using CryptoBlade.Models;
 using CryptoBlade.Strategies;
 using CryptoBlade.Strategies.Common;
 using CryptoBlade.Strategies.Wallet;
@@ -28,22 +29,11 @@ namespace CryptoBlade.Services
         {
             try
             {
-                int expectedUpdates = Strategies.Count;
                 while (!cancel.IsCancellationRequested)
                 {
                     try
                     {
-                        await StrategyExecutionChannel.Reader.WaitToReadAsync(cancel);
-                        // do not spin wait for too long, some strategies might not be ready yet
-
-                        // use thread sleep to avoid 100% CPU usage
-                        TimeSpan totalWaitTime = TimeSpan.Zero;
-                        while (StrategyExecutionChannel.Reader.Count < expectedUpdates
-                               && totalWaitTime < TimeSpan.FromSeconds(5))
-                        {
-                            await Task.Delay(100, cancel);
-                            totalWaitTime += TimeSpan.FromMilliseconds(100);
-                        }
+                        await ProcessStrategyDataAsync(cancel);
 
                         var hasInconsistent = Strategies.Values.Any(x => !x.ConsistentData);
                         if (hasInconsistent)
@@ -127,7 +117,7 @@ namespace CryptoBlade.Services
                     finally
                     {
                         // wait a little bit so we are not rate limited
-                        await Task.Delay(TimeSpan.FromSeconds(10), cancel);
+                        await StrategyExecutionNextCycleDelayAsync(cancel);
                     }
                 }
             }

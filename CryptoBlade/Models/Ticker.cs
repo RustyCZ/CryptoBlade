@@ -9,5 +9,7 @@
         public decimal LastPrice { get; set; }
 
         public decimal? FundingRate { get; set; }
+
+        public DateTime Timestamp { get; set; }
     }
 }

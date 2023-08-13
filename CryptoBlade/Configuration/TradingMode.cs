@@ -4,7 +4,7 @@
     {
         Normal,
         Dynamic,
-        GracefulShutdown,
         Readonly,
+        DynamicBackTest,
     }
 }

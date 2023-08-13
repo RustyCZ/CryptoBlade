@@ -3,6 +3,6 @@
     public interface IBackTestRunner
     {
         Task PrepareDataAsync(CancellationToken cancel = default);
-        Task<bool> MoveNextAsync(CancellationToken cancel = default);
+        Task<bool> AdvanceTimeAsync(CancellationToken cancel = default);
     }
 }

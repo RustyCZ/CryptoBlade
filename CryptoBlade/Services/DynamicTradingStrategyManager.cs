@@ -12,6 +12,8 @@ namespace CryptoBlade.Services
     {
         private readonly ILogger<DynamicTradingStrategyManager> m_logger;
         private readonly IOptions<TradingBotOptions> m_options;
+        private readonly RollingWindowThrottler m_strategyShortThrottler;
+        private readonly RollingWindowThrottler m_strategyLongThrottler;
 
         public DynamicTradingStrategyManager(IOptions<TradingBotOptions> options, 
             ILogger<DynamicTradingStrategyManager> logger, 
@@ -23,6 +25,23 @@ namespace CryptoBlade.Services
         {
             m_options = options;
             m_logger = logger;
+            DynamicBotCount dynamicBotCount = m_options.Value.DynamicBotCount;
+            m_strategyShortThrottler = new RollingWindowThrottler(m_options.Value.DynamicBotCount.MaxDynamicStrategyOpenPerStep,
+                dynamicBotCount.Step);
+            m_strategyLongThrottler = new RollingWindowThrottler(m_options.Value.DynamicBotCount.MaxDynamicStrategyOpenPerStep,
+                dynamicBotCount.Step);
+        }
+
+        protected virtual Task<bool> ShouldShortThrottleAsync(CancellationToken cancel)
+        {
+            bool shouldThrottle = m_strategyShortThrottler.ShouldThrottle(1, out _);
+            return Task.FromResult(shouldThrottle);
+        }
+
+        protected virtual Task<bool> ShouldLongThrottleAsync(CancellationToken cancel)
+        {
+            bool shouldThrottle = m_strategyLongThrottler.ShouldThrottle(1, out _);
+            return Task.FromResult(shouldThrottle);
         }
 
         protected override async Task StrategyExecutionAsync(CancellationToken cancel)
@@ -30,23 +49,11 @@ namespace CryptoBlade.Services
             try
             {
                 DynamicBotCount dynamicBotCount = m_options.Value.DynamicBotCount;
-                int expectedUpdates = Strategies.Count;
-                RollingWindowThrottler strategyShortThrottler = new RollingWindowThrottler(m_options.Value.DynamicBotCount.MaxDynamicStrategyOpenPerStep, 
-                    dynamicBotCount.Step);
-                RollingWindowThrottler strategyLongThrottler = new RollingWindowThrottler(m_options.Value.DynamicBotCount.MaxDynamicStrategyOpenPerStep,
-                    dynamicBotCount.Step);
                 while (!cancel.IsCancellationRequested)
                 {
                     try
                     {
-                        await StrategyExecutionChannel.Reader.WaitToReadAsync(cancel);
-                        TimeSpan totalWaitTime = TimeSpan.Zero;
-                        while (StrategyExecutionChannel.Reader.Count < expectedUpdates
-                               && totalWaitTime < TimeSpan.FromSeconds(5))
-                        {
-                            await Task.Delay(100, cancel);
-                            totalWaitTime += TimeSpan.FromMilliseconds(100);
-                        }
+                        await ProcessStrategyDataAsync(cancel);
 
                         var hasInconsistent = Strategies.Values.Any(x => !x.ConsistentData);
                         if (hasInconsistent)
@@ -62,7 +69,6 @@ namespace CryptoBlade.Services
                             strategyState.TotalShortExposure,
                             strategyState.TotalWalletLongExposure,
                             strategyState.TotalWalletShortExposure);
-
 
                         List<string> symbolsToProcess = new List<string>();
                         using (await Lock.LockAsync())
@@ -97,11 +103,9 @@ namespace CryptoBlade.Services
                                                         && strategyState.TotalWalletShortExposure.Value <
                                                         dynamicBotCount.TargetShortExposure;
                             m_logger.LogInformation(
-                                "Can add long positions: '{CanAddLongPositions}', can add short positions: '{CanAddShortPositions}'. Long throttler: '{LongThrottler}' Short throttler: '{LongThrottler}'",
+                                "Can add long positions: '{CanAddLongPositions}', can add short positions: '{CanAddShortPositions}'.",
                                 canAddLongPositions,
-                                canAddShortPositions,
-                                strategyLongThrottler.AvailableTokens,
-                                strategyShortThrottler.AvailableTokens);
+                                canAddShortPositions);
                             // we need to put it back to hashset, we might open opposite position on the same symbol
                             HashSet<string> tradeSymbols = new HashSet<string>();
                             foreach (string inTradeSymbol in inTradeSymbols)
@@ -132,7 +136,8 @@ namespace CryptoBlade.Services
                                     .ToArray();
                                 foreach (string longStrategyCandidate in longStrategyCandidates)
                                 {
-                                    if (strategyLongThrottler.ShouldThrottle(1, out _))
+                                    bool shouldThrottle = await ShouldLongThrottleAsync(cancel);
+                                    if (shouldThrottle)
                                         break;
                                     m_logger.LogInformation("Adding long strategy '{LongStrategyCandidate}'",
                                         longStrategyCandidate);
@@ -167,7 +172,8 @@ namespace CryptoBlade.Services
                                     .ToArray();
                                 foreach (string shortStrategyCandidate in shortStrategyCandidates)
                                 {
-                                    if (strategyShortThrottler.ShouldThrottle(1, out _))
+                                    bool shouldThrottle = await ShouldShortThrottleAsync(cancel);
+                                    if (shouldThrottle)
                                         break;
                                     m_logger.LogInformation("Adding short strategy '{ShortStrategyCandidate}'",
                                         shortStrategyCandidate);
@@ -193,7 +199,7 @@ namespace CryptoBlade.Services
                     finally
                     {
                         // wait a little bit so we are not rate limited
-                        await Task.Delay(TimeSpan.FromSeconds(10), cancel);
+                        await StrategyExecutionNextCycleDelayAsync(cancel);
                     }
                 }
             }

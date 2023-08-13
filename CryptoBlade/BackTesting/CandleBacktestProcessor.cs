@@ -27,7 +27,7 @@ namespace CryptoBlade.BackTesting
             }
         }
 
-        public Candle[] MoveNext(DateTime currentTime)
+        public Candle[] AdvanceTime(DateTime currentTime)
         {
             List<Candle> candles = new List<Candle>();
             foreach (var timeFrame in s_dailyTimeFrames)

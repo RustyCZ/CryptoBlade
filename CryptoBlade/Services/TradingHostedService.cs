@@ -1,10 +1,4 @@
-﻿using Bybit.Net.Enums;
-using Bybit.Net.Interfaces.Clients;
-using CryptoBlade.Configuration;
-using CryptoBlade.Mapping;
-using CryptoBlade.Strategies;
-using CryptoBlade.Strategies.Wallet;
-using Microsoft.Extensions.Options;
+﻿using CryptoBlade.Strategies.Wallet;
 
 namespace CryptoBlade.Services
 {

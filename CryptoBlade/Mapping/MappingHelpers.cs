@@ -107,6 +107,7 @@ namespace CryptoBlade.Mapping
                 LastPrice = ticker.LastPrice,
                 BestBidPrice = ticker.BestBidPrice,
                 FundingRate = ticker.FundingRate,
+                Timestamp = DateTime.UtcNow,
             };
         }
 
@@ -155,6 +156,7 @@ namespace CryptoBlade.Mapping
                 LastPrice = ticker.LastPrice.Value,
                 BestBidPrice = ticker.BestBidPrice.Value,
                 FundingRate = ticker.FundingRate,
+                Timestamp = DateTime.UtcNow,
             };
         }
 

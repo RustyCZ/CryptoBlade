@@ -14,6 +14,8 @@ namespace CryptoBlade.Services
 {
     public abstract class TradeStrategyManagerBase : ITradeStrategyManager
     {
+        protected readonly record struct SymbolCandle(string Symbol, Candle Candle);
+        protected readonly record struct SymbolTicker(string Symbol, Ticker Ticker);
         private readonly ILogger<TradeStrategyManagerBase> m_logger;
         private readonly Dictionary<string, ITradingStrategy> m_strategies;
         private readonly ITradingStrategyFactory m_strategyFactory;
@@ -46,11 +48,16 @@ namespace CryptoBlade.Services
             m_strategies = new Dictionary<string, ITradingStrategy>();
             m_subscriptions = new List<IUpdateSubscription>();
             m_strategyExecutionChannel = Channel.CreateUnbounded<string>();
+            CandleChannel = Channel.CreateUnbounded<SymbolCandle>();
+            TickerChannel = Channel.CreateUnbounded<SymbolTicker>();
             m_lastExecutionTimestamp = DateTime.UtcNow.Ticks;
         }
 
         protected Dictionary<string, ITradingStrategy> Strategies => m_strategies;
         protected Channel<string> StrategyExecutionChannel => m_strategyExecutionChannel;
+        protected Channel<SymbolCandle> CandleChannel { get; }
+        protected Channel<SymbolTicker> TickerChannel { get; }
+
         protected AsyncLock Lock => m_lock;
 
         public DateTime LastExecution
@@ -67,7 +74,7 @@ namespace CryptoBlade.Services
             return Task.FromResult(m_strategies.Values.Select(x => x).ToArray());
         }
 
-        public async Task StartStrategiesAsync(CancellationToken cancel)
+        public virtual async Task StartStrategiesAsync(CancellationToken cancel)
         {
             await CreateStrategiesAsync();
             m_cancelSource = CancellationTokenSource.CreateLinkedTokenSource(cancel);
@@ -75,8 +82,69 @@ namespace CryptoBlade.Services
             m_initTask = Task.Run(async () => await InitStrategiesAsync(ctsCancel), ctsCancel);
         }
 
+        protected virtual async Task StrategyExecutionDataDelay(CancellationToken cancel)
+        {
+            int expectedUpdates = Strategies.Count;
+            await StrategyExecutionChannel.Reader.WaitToReadAsync(cancel);
+            TimeSpan totalWaitTime = TimeSpan.Zero;
+            while (StrategyExecutionChannel.Reader.Count < expectedUpdates
+                   && totalWaitTime < TimeSpan.FromSeconds(5))
+            {
+                await Task.Delay(100, cancel);
+                totalWaitTime += TimeSpan.FromMilliseconds(100);
+            }
+        }
+
+        protected virtual async Task StrategyExecutionNextCycleDelayAsync(CancellationToken cancel)
+        {
+            await Task.Delay(TimeSpan.FromSeconds(10), cancel);
+        }
+
+        protected virtual Task StrategyExecutionNextStep(CancellationToken cancel)
+        {
+            return Task.CompletedTask;
+        }
+
+        protected async Task ProcessCandlesAsync(CancellationToken cancel)
+        {
+            List<SymbolCandle> candles = new List<SymbolCandle>();
+            while (CandleChannel.Reader.TryRead(out var candle))
+                candles.Add(candle);
+            foreach (SymbolCandle symbolCandle in candles)
+            {
+                if (m_strategies.TryGetValue(symbolCandle.Symbol, out var strategy))
+                    await strategy.AddCandleDataAsync(symbolCandle.Candle, cancel);
+            }
+        }
+
+        protected async Task ProcessTickersAsync(CancellationToken cancel)
+        {
+            List<SymbolTicker> tickers = new List<SymbolTicker>();
+            while (TickerChannel.Reader.TryRead(out var ticker))
+                tickers.Add(ticker);
+            foreach (SymbolTicker symbolTicker in tickers)
+            {
+                if (m_strategies.TryGetValue(symbolTicker.Symbol, out var strategy))
+                    await strategy.UpdatePriceDataSync(symbolTicker.Ticker, cancel);
+            }
+        }
+
+        protected async Task ProcessStrategyDataAsync(CancellationToken cancel)
+        {
+            await StrategyExecutionNextStep(cancel);
+            await StrategyExecutionDataDelay(cancel);
+            await ProcessTickersAsync(cancel);
+            await ProcessCandlesAsync(cancel);
+        }
+
+        protected virtual Task PreInitializationPhaseAsync(CancellationToken cancel)
+        {
+            return Task.CompletedTask;
+        }
+
         private async Task InitStrategiesAsync(CancellationToken cancel)
         {
+            await PreInitializationPhaseAsync(cancel);
             var symbolInfo = await GetSymbolInfoAsync(cancel);
             Dictionary<string, SymbolInfo> symbolInfoDict = symbolInfo
                 .DistinctBy(x => x.Name)
@@ -159,8 +227,8 @@ namespace CryptoBlade.Services
         {
             using (await m_lock.LockAsync())
             {
-                if (m_strategies.TryGetValue(symbol, out var strategy))
-                    await strategy.UpdatePriceDataSync(ticker, CancellationToken.None);
+                if (m_strategies.TryGetValue(symbol, out _))
+                    await TickerChannel.Writer.WriteAsync(new SymbolTicker(symbol, ticker));
             }
         }
 
@@ -170,7 +238,7 @@ namespace CryptoBlade.Services
             {
                 if (m_strategies.TryGetValue(symbol, out var strategy))
                 {
-                    await strategy.AddCandleDataAsync(candle, CancellationToken.None);
+                    await CandleChannel.Writer.WriteAsync(new SymbolCandle(symbol, candle));
                     bool isPrimaryCandle = strategy.RequiredTimeFrameWindows.Any(x => x.TimeFrame == candle.TimeFrame);
                     if (isPrimaryCandle)
                     {

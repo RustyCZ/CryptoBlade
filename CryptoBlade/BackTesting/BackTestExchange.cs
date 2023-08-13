@@ -41,7 +41,7 @@ namespace CryptoBlade.BackTesting
             m_cbFuturesRestClient = cbFuturesRestClient;
             m_options = options;
             m_currentTime = m_options.Value.Start;
-            m_currentBalance = new Balance(m_options.Value.InitialBalance, 0m, 0m, 0m);
+            m_currentBalance = new Balance(m_options.Value.InitialBalance, m_options.Value.InitialBalance, 0m, 0m);
             m_openOrders = new Dictionary<string, HashSet<Order>>();
             m_longPositions = new Dictionary<string, OpenPositionWithOrders>();
             m_shortPositions = new Dictionary<string, OpenPositionWithOrders>();
@@ -62,9 +62,27 @@ namespace CryptoBlade.BackTesting
             return Task.FromResult(true);
         }
 
-        public Task<bool> CancelOrderAsync(string symbol, string orderId, CancellationToken cancel = default)
+        public async Task<bool> CancelOrderAsync(string symbol, string orderId, CancellationToken cancel = default)
         {
-            return Task.FromResult(true);
+            Order? order = null;
+            using (await m_lock.LockAsync())
+            {
+                if (m_openOrders.TryGetValue(symbol, out var openOrders))
+                {
+                    var openOrder = openOrders.FirstOrDefault(o => o.OrderId == orderId);
+                    if (openOrder != null)
+                    {
+                        openOrders.Remove(openOrder);
+                        openOrder.Status = OrderStatus.Cancelled;
+                        order = openOrder;
+                    }
+                }
+            }
+
+            if (order != null)
+                await NotifyOrderAsync(order);
+
+            return true;
         }
 
         public async Task<bool> PlaceLimitBuyOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
@@ -289,6 +307,7 @@ namespace CryptoBlade.BackTesting
                 BestAskPrice = typicalPrice,
                 BestBidPrice = typicalPrice,
                 LastPrice = typicalPrice,
+                Timestamp = currentCandle.StartTime + currentCandle.TimeFrame.ToTimeSpan(),
             };
         }
 
@@ -356,17 +375,18 @@ namespace CryptoBlade.BackTesting
             await LoadDataForDayAsync(m_currentTime.Date, cancel);
         }
 
-        public async Task<bool> MoveNextAsync(CancellationToken cancel = default)
+        public async Task<bool> AdvanceTimeAsync(CancellationToken cancel = default)
         {
             var currentTime = m_currentTime;
             foreach (var backtestProcessor in m_candleProcessors)
             {
-                Candle[] candles = backtestProcessor.Value.MoveNext(currentTime);
+                Candle[] candles = backtestProcessor.Value.AdvanceTime(currentTime);
                 foreach (var candle in candles)
                 {
                     // we should probably use trades data for this
                     if (candle.TimeFrame == TimeFrame.OneMinute)
                     {
+                        await ProcessPositionsAndOrdersAsync(backtestProcessor.Key, candle, cancel);
                         foreach (TickerUpdateSubscription tickerUpdateSubscription in m_tickerSubscriptions)
                         {
                             var typicalPrice = (candle.High + candle.Low + candle.Close) / 3.0m;
@@ -376,9 +396,11 @@ namespace CryptoBlade.BackTesting
                                 BestAskPrice = typicalPrice,
                                 BestBidPrice = typicalPrice,
                                 LastPrice = typicalPrice,
+                                Timestamp = candle.StartTime + candle.TimeFrame.ToTimeSpan(),
                             });
                         }
                     }
+
                     foreach (var subscription in m_candleSubscriptions)
                         subscription.Notify(backtestProcessor.Key, candle);
                 }
@@ -388,15 +410,71 @@ namespace CryptoBlade.BackTesting
 
             if (nextTime.Date != currentTime.Date)
                 await LoadDataForDayAsync(nextTime.Date, cancel);
-                
+
             m_currentTime = nextTime;
             bool hasMoreData = m_currentTime < m_options.Value.End;
             return hasMoreData;
         }
 
-        private Task ProcessPositionsAndOrdersAsync(string symbol, Candle candle)
+        private async Task ProcessPositionsAndOrdersAsync(string symbol, Candle candle, CancellationToken cancel)
         {
-            return Task.CompletedTask;
+            List<Order> filledOrders = new List<Order>();
+            using (await m_lock.LockAsync())
+            {
+                if (m_openOrders.TryGetValue(symbol, out var openOrders))
+                {
+                    foreach (var order in openOrders)
+                    {
+                        if (candle.High >= order.Price || candle.Low <= order.Price)
+                        {
+                            order.Status = OrderStatus.Filled;
+                            filledOrders.Add(order);
+                        }
+                    }
+
+                    foreach (Order filledOrder in filledOrders)
+                    {
+                        openOrders.Remove(filledOrder);
+                        if (!filledOrder.ReduceOnly!.Value)
+                            throw new NotSupportedException("Currently we can handle only reduce only. Other orders are filled immediately.");
+                        if (filledOrder.PositionMode == OrderPositionMode.BothSideBuy)
+                        {
+                            if (!m_longPositions.TryGetValue(symbol, out var longPosition))
+                                throw new InvalidOperationException("Long position should exist");
+                            var position = longPosition.Position;
+                            if (position.Quantity != filledOrder.Quantity)
+                                throw new NotSupportedException("Currently we support only full reduce.");
+                            // TODO: fees
+                            var profitOrLoss = (filledOrder.Price!.Value - position.AveragePrice) * filledOrder.Quantity;
+                            await AddProfitOrLossToBalance(profitOrLoss, cancel);
+                            m_longPositions.Remove(symbol);
+                        }
+
+                        if (filledOrder.PositionMode == OrderPositionMode.BothSideSell)
+                        {
+                            if (!m_shortPositions.TryGetValue(symbol, out var shortPosition))
+                                throw new InvalidOperationException("Short position should exist");
+                            var position = shortPosition.Position;
+                            if (position.Quantity != filledOrder.Quantity)
+                                throw new NotSupportedException("Currently we support only full reduce.");
+                            // TODO: fees
+                            var profitOrLoss = (position.AveragePrice - filledOrder.Price!.Value) * filledOrder.Quantity;
+                            await AddProfitOrLossToBalance(profitOrLoss, cancel);
+                            m_shortPositions.Remove(symbol);
+                        }
+                    }
+                }
+            }
+        }
+
+        private async Task AddProfitOrLossToBalance(decimal profitOrLoss, CancellationToken cancel = default)
+        {
+            var balance = m_currentBalance;
+            var walletBalance = balance.WalletBalance + profitOrLoss;
+            // todo calculate parts
+            var newBalance = new Balance(walletBalance, walletBalance, null, null);
+            m_currentBalance = newBalance;
+            await NotifyBalanceAsync(newBalance);
         }
 
         private async Task LoadDataForDayAsync(DateTime day, CancellationToken cancel = default)

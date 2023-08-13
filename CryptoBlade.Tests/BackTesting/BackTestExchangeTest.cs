@@ -23,12 +23,11 @@ namespace CryptoBlade.Tests.BackTesting
         [Fact]
         public async Task BackTestExchangeTestAsync()
         {
-            var start = new DateTime(2023, 8, 1);
-            var end = new DateTime(2023, 8, 3);
+            var start = new DateTime(2023, 8, 8);
+            var end = new DateTime(2023, 8, 10);
             var symbols = new[]
             {
                 "SOLUSDT",
-                "SUIUSDT",
             };
 
             var exchangeOptions = Options.Create(new BackTestExchangeOptions
@@ -82,7 +81,7 @@ namespace CryptoBlade.Tests.BackTesting
             var ticker = await exchange.GetTickerAsync(symbols[0]);
             Assert.NotNull(ticker);
 
-            while (await exchange.MoveNextAsync())
+            while (await exchange.AdvanceTimeAsync())
             {
             }
             Assert.NotEmpty(oneMinuteCandles);

@@ -1,28 +1,18 @@
-﻿using CryptoBlade.BackTesting.Bybit;
+﻿using Bybit.Net.Clients;
+using CryptoBlade.BackTesting.Bybit;
 using CryptoBlade.BackTesting;
+using CryptoBlade.Exchanges;
+using CryptoBlade.Helpers;
 using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
 using Xunit.Abstractions;
 
 namespace CryptoBlade.Tests.BackTesting
 {
-    public class BackTestDataDownloaderTest
+    public class BackTestDataDownloaderTest : TestBase
     {
-        private readonly ILoggerFactory m_loggerFactory;
-        
-        public BackTestDataDownloaderTest(ITestOutputHelper testOutputHelper)
+        public BackTestDataDownloaderTest(ITestOutputHelper testOutputHelper) 
+            : base(testOutputHelper)
         {
-            m_loggerFactory = LoggerFactory
-                .Create(builder =>
-                {
-                    builder.SetMinimumLevel(LogLevel.Information);
-                    builder.AddXunit(testOutputHelper);
-                    builder.AddSimpleConsole(o =>
-                    {
-                        o.UseUtcTimestamp = true;
-                        o.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
-                    });
-                });
         }
 
         [Fact]
@@ -32,20 +22,28 @@ namespace CryptoBlade.Tests.BackTesting
             {
                 Directory = "HistoricalData",
             });
-            using var storage = new HistoricalTradesStorage(options);
-            var downloader = new BybitHistoricalTradesDownloader(storage, m_loggerFactory.CreateLogger<BybitHistoricalTradesDownloader>());
-            var backtestDataDownloaderOptions = Options.Create(new BackTestDataDownloaderOptions
+            var bybit = new BybitRestClient();
+            var cbRestClientOptions = Options.Create(new BybitCbFuturesRestClientOptions
             {
-                Start = new DateTime(2023, 8, 1),
-                End = new DateTime(2023, 8, 11),
-                Symbols = new[]
-                {
-                    "SOLUSDT",
-                    "SUIUSDT"
-                },
+                PlaceOrderAttempts = 5
             });
-            BackTestDataDownloader backTestDataDownloader = new BackTestDataDownloader(backtestDataDownloaderOptions, downloader);
-            await backTestDataDownloader.DownloadDataForBackTestAsync(CancellationToken.None);
+            var cbRestClient = new BybitCbFuturesRestClient(cbRestClientOptions, 
+                bybit,
+                ApplicationLogging.CreateLogger<BybitCbFuturesRestClient>());
+            using var storage = new HistoricalDataStorage(options);
+            var downloader = new BybitHistoricalDataDownloader(
+                storage, 
+                ApplicationLogging.CreateLogger<BybitHistoricalDataDownloader>(), 
+                cbRestClient);
+            var start = new DateTime(2023, 8, 1);
+            var end = new DateTime(2023, 8, 11);
+            var symbols = new[]
+            {
+                "SOLUSDT",
+                "SUIUSDT"
+            };
+            BackTestDataDownloader backTestDataDownloader = new BackTestDataDownloader(downloader);
+            await backTestDataDownloader.DownloadDataForBackTestAsync(symbols, start, end, CancellationToken.None);
         }
     }
 }

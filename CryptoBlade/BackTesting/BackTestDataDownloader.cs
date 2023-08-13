@@ -4,23 +4,20 @@ namespace CryptoBlade.BackTesting
 {
     public class BackTestDataDownloader : IBackTestDataDownloader
     {
-        private readonly IOptions<BackTestDataDownloaderOptions> m_options;
-        private readonly IHistoricalTradesDownloader m_historicalTradesDownloader;
+        private readonly IHistoricalDataDownloader m_historicalDataDownloader;
 
-        public BackTestDataDownloader(IOptions<BackTestDataDownloaderOptions> options,
-            IHistoricalTradesDownloader historicalTradesDownloader)
+        public BackTestDataDownloader(IHistoricalDataDownloader historicalDataDownloader)
         {
-            m_historicalTradesDownloader = historicalTradesDownloader;
-            m_options = options;
+            m_historicalDataDownloader = historicalDataDownloader;
         }
 
-        public async Task DownloadDataForBackTestAsync(CancellationToken cancel = default)
+        public async Task DownloadDataForBackTestAsync(string[] symbols, DateTime start, DateTime end, CancellationToken cancel = default)
         {
-            foreach (string symbol in m_options.Value.Symbols)
+            foreach (string symbol in symbols)
             {
                 if(cancel.IsCancellationRequested)
                     break;
-                await m_historicalTradesDownloader.DownloadRangeAsync(symbol, m_options.Value.Start, m_options.Value.End);
+                await m_historicalDataDownloader.DownloadRangeAsync(symbol, new HistoricalDataInclude(false, true), start, end, cancel);
             }
         }
     }

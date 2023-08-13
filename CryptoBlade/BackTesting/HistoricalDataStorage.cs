@@ -1,21 +1,22 @@
 ﻿using CryptoBlade.BackTesting.Model;
+using CryptoBlade.Models;
 using Microsoft.Extensions.Options;
 
 namespace CryptoBlade.BackTesting
 {
-    public class HistoricalTradesStorage : IHistoricalTradesStorage, IDisposable
+    public class HistoricalDataStorage : IHistoricalDataStorage, IDisposable
     {
         private readonly IOptions<HistoricalTradesStorageOptions> m_options;
         private readonly Dictionary<string, HistoricalSymbolStorage> m_symbolStorages;
         private bool m_disposed;
 
-        public HistoricalTradesStorage(IOptions<HistoricalTradesStorageOptions> options)
+        public HistoricalDataStorage(IOptions<HistoricalTradesStorageOptions> options)
         {
             m_options = options;
             m_symbolStorages = new Dictionary<string, HistoricalSymbolStorage>();
         }
 
-        public async Task StoreAsync(string symbol, DateTime day, Trade[] trades, bool flush)
+        public async Task StoreAsync(string symbol, HistoricalDayData dayData, bool flush, CancellationToken cancel = default)
         {
             if (!m_symbolStorages.TryGetValue(symbol, out var storage))
             { 
@@ -23,10 +24,10 @@ namespace CryptoBlade.BackTesting
                 m_symbolStorages.Add(symbol, storage);
             }
 
-            await storage.StoreAsync(day, trades, flush);
+            await storage.StoreAsync(dayData, flush);
         }
 
-        public async Task<Trade[]> ReadAsync(string symbol, DateTime day)
+        public async Task<HistoricalDayData> ReadAsync(string symbol, DateTime day, CancellationToken cancel = default)
         {
             if (!m_symbolStorages.TryGetValue(symbol, out var storage))
             {
@@ -36,7 +37,7 @@ namespace CryptoBlade.BackTesting
             return await storage.ReadAsync(day);
         }
 
-        public async Task<DateTime[]> FindMissingDaysAsync(string symbol, DateTime start, DateTime end)
+        public async Task<DateTime[]> FindMissingDaysAsync(string symbol, DateTime start, DateTime end, CancellationToken cancel = default)
         {
             if (!m_symbolStorages.TryGetValue(symbol, out var storage))
             {

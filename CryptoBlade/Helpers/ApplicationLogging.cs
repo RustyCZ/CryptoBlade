@@ -3,10 +3,10 @@
     /// <summary>
     /// Shared logger
     /// </summary>
-    internal static class ApplicationLogging
+    public static class ApplicationLogging
     {
-        internal static ILoggerFactory LoggerFactory { get; set; } = null!;
-        internal static ILogger CreateLogger<T>() => LoggerFactory.CreateLogger<T>();
-        internal static ILogger CreateLogger(string categoryName) => LoggerFactory.CreateLogger(categoryName);
+        public static ILoggerFactory LoggerFactory { get; set; } = null!;
+        public static ILogger<T> CreateLogger<T>() => LoggerFactory.CreateLogger<T>();
+        public static ILogger CreateLogger(string categoryName) => LoggerFactory.CreateLogger(categoryName);
     }
 }

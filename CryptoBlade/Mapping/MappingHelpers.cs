@@ -6,32 +6,6 @@ namespace CryptoBlade.Mapping
 {
     public static class MappingHelpers
     {
-        public static TimeSpan ToTimespan(this TimeFrame timeFrame)
-        {
-            switch (timeFrame)
-            {
-                case TimeFrame.OneMinute:
-                    return TimeSpan.FromMinutes(1);
-                case TimeFrame.FiveMinutes:
-                    return TimeSpan.FromMinutes(5);
-                case TimeFrame.FifteenMinutes:
-                    return TimeSpan.FromMinutes(15);
-                case TimeFrame.ThirtyMinutes:
-                    return TimeSpan.FromMinutes(30);
-                case TimeFrame.OneHour:
-                    return TimeSpan.FromHours(1);
-                case TimeFrame.FourHours:
-                    return TimeSpan.FromHours(4);
-                case TimeFrame.OneDay:
-                    return TimeSpan.FromDays(1);
-                case TimeFrame.OneWeek:
-                    return TimeSpan.FromDays(7);
-                case TimeFrame.OneMonth:
-                    return TimeSpan.FromDays(30);
-                default: throw new ArgumentOutOfRangeException(nameof(timeFrame), timeFrame, null);
-            }
-        }
-
         public static Bybit.Net.Enums.KlineInterval ToKlineInterval(this TimeFrame timeFrame)
         {
             switch (timeFrame)

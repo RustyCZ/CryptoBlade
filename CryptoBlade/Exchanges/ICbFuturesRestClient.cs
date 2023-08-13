@@ -58,6 +58,13 @@ namespace CryptoBlade.Exchanges
             int limit, 
             CancellationToken cancel = default);
 
+        Task<Candle[]> GetKlinesAsync(
+            string symbol,
+            TimeFrame interval,
+            DateTime start,
+            DateTime end,
+            CancellationToken cancel = default);
+
         Task<Ticker> GetTickerAsync(string symbol, CancellationToken cancel = default);
 
         Task<Order[]> GetOrdersAsync(CancellationToken cancel = default);

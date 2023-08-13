@@ -8,6 +8,7 @@ using CryptoBlade.Strategies.Policies;
 using CryptoBlade.Strategies.Wallet;
 using CryptoExchange.Net.CommonObjects;
 using Microsoft.Extensions.Options;
+using System.Collections.Generic;
 using Order = CryptoBlade.Models.Order;
 using OrderSide = Bybit.Net.Enums.OrderSide;
 using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
@@ -383,6 +384,33 @@ namespace CryptoBlade.Exchanges
 
                 // we don't want the last candle, because it's not closed yet
                 var candleData = data.List.Skip(1).Reverse().Select(x => x.ToCandle(interval))
+                    .ToArray();
+                return candleData;
+            });
+
+            return candles;
+        }
+
+        public async Task<Candle[]> GetKlinesAsync(string symbol, TimeFrame interval, DateTime start, DateTime end,
+            CancellationToken cancel = default)
+        {
+            var candles = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                var dataResponse = await m_bybitRestClient.V5Api.ExchangeData.GetKlinesAsync(
+                    m_category,
+                    symbol,
+                    interval.ToKlineInterval(),
+                    start,
+                    end,
+                    1000,
+                    cancel);
+                if (!dataResponse.GetResultOrError(out var data, out var error))
+                {
+                    throw new InvalidOperationException(error.Message);
+                }
+
+                // we don't want the last candle, because it's not closed yet
+                var candleData = data.List.Reverse().Select(x => x.ToCandle(interval))
                     .ToArray();
                 return candleData;
             });

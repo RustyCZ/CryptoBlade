@@ -1,5 +1,6 @@
 ﻿using CryptoBlade.Models;
 using CryptoBlade.Strategies.Wallet;
+using Microsoft.AspNetCore.Mvc.Localization;
 using Skender.Stock.Indicators;
 
 namespace CryptoBlade.Mapping
@@ -191,6 +192,7 @@ namespace CryptoBlade.Mapping
                 ValueFilled = value.ValueFilled,
                 ValueRemaining = value.ValueRemaining,
                 ReduceOnly = value.ReduceOnly,
+                CreateTime = value.CreateTime,
             };
         }
 

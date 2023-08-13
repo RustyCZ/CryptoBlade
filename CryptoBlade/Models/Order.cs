@@ -31,5 +31,7 @@ namespace CryptoBlade.Models
         public decimal? ValueFilled { get; set; }
 
         public bool? ReduceOnly { get; set; }
+
+        public DateTime CreateTime { get; set; }
     }
 }

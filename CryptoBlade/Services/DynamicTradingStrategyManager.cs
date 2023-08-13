@@ -139,7 +139,7 @@ namespace CryptoBlade.Services
                                     bool shouldThrottle = await ShouldLongThrottleAsync(cancel);
                                     if (shouldThrottle)
                                         break;
-                                    m_logger.LogInformation("Adding long strategy '{LongStrategyCandidate}'",
+                                    m_logger.LogDebug("Adding long strategy '{LongStrategyCandidate}'",
                                         longStrategyCandidate);
                                     tradeSymbols.Add(longStrategyCandidate);
                                     executeParams.TryGetValue(longStrategyCandidate, out var existingParams);
@@ -175,7 +175,7 @@ namespace CryptoBlade.Services
                                     bool shouldThrottle = await ShouldShortThrottleAsync(cancel);
                                     if (shouldThrottle)
                                         break;
-                                    m_logger.LogInformation("Adding short strategy '{ShortStrategyCandidate}'",
+                                    m_logger.LogDebug("Adding short strategy '{ShortStrategyCandidate}'",
                                         shortStrategyCandidate);
                                     tradeSymbols.Add(shortStrategyCandidate);
                                     executeParams.TryGetValue(shortStrategyCandidate, out var existingParams);

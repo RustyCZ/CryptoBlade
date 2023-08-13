@@ -13,6 +13,7 @@ namespace CryptoBlade.BackTesting
         private readonly IBackTestDataDownloader m_backTestDataDownloader;
         private readonly IHistoricalDataStorage m_historicalDataStorage;
         private DateTime m_currentTime;
+        private DateTime? m_nextTime;
         private readonly Dictionary<string, CandleBacktestProcessor> m_candleProcessors;
         private readonly AsyncLock m_lock;
         private readonly HashSet<CandleUpdateSubscription> m_candleSubscriptions;
@@ -108,7 +109,10 @@ namespace CryptoBlade.BackTesting
                     QuantityRemaining = 0,
                     ReduceOnly = false,
                     ValueRemaining = 0,
+                    CreateTime = m_currentTime,
                 };
+                decimal fee = quantity * price * m_options.Value.FeeRate;
+                await AddFeeToBalanceAsync(-fee);
                 if (!m_longPositions.TryGetValue(symbol, out var openPosition))
                 {
                     openPosition = new OpenPositionWithOrders(order);
@@ -148,7 +152,10 @@ namespace CryptoBlade.BackTesting
                     QuantityRemaining = 0,
                     ReduceOnly = false,
                     ValueRemaining = 0,
+                    CreateTime = m_currentTime,
                 };
+                decimal fee = quantity * price * m_options.Value.FeeRate;
+                await AddFeeToBalanceAsync(-fee);
                 if (!m_shortPositions.TryGetValue(symbol, out var openPosition))
                 {
                     openPosition = new OpenPositionWithOrders(order);
@@ -190,6 +197,7 @@ namespace CryptoBlade.BackTesting
                     QuantityRemaining = qty,
                     ReduceOnly = true,
                     ValueRemaining = qty * price,
+                    CreateTime = m_currentTime,
                 };
 
                 if (!m_openOrders.TryGetValue(symbol, out var openOrders))
@@ -230,6 +238,7 @@ namespace CryptoBlade.BackTesting
                     QuantityRemaining = qty,
                     ReduceOnly = true,
                     ValueRemaining = qty * price,
+                    CreateTime = m_currentTime,
                 };
                 if (!m_openOrders.TryGetValue(symbol, out var openOrders))
                 {
@@ -300,14 +309,13 @@ namespace CryptoBlade.BackTesting
             {
                 return new Ticker();
             }
-            var typicalPrice = (currentCandle.High + currentCandle.Low + currentCandle.Close) / 3;
             return new Ticker
             {
                 FundingRate = null,
-                BestAskPrice = typicalPrice,
-                BestBidPrice = typicalPrice,
-                LastPrice = typicalPrice,
-                Timestamp = currentCandle.StartTime + currentCandle.TimeFrame.ToTimeSpan(),
+                BestAskPrice = currentCandle.Open,
+                BestBidPrice = currentCandle.Open,
+                LastPrice = currentCandle.Open,
+                Timestamp = currentCandle.StartTime,
             };
         }
 
@@ -377,6 +385,8 @@ namespace CryptoBlade.BackTesting
 
         public async Task<bool> AdvanceTimeAsync(CancellationToken cancel = default)
         {
+            if (m_nextTime.HasValue)
+                m_currentTime = m_nextTime.Value;
             var currentTime = m_currentTime;
             foreach (var backtestProcessor in m_candleProcessors)
             {
@@ -386,17 +396,16 @@ namespace CryptoBlade.BackTesting
                     // we should probably use trades data for this
                     if (candle.TimeFrame == TimeFrame.OneMinute)
                     {
-                        await ProcessPositionsAndOrdersAsync(backtestProcessor.Key, candle, cancel);
+                        await ProcessPositionsAndOrdersAsync(backtestProcessor.Key, candle);
                         foreach (TickerUpdateSubscription tickerUpdateSubscription in m_tickerSubscriptions)
                         {
-                            var typicalPrice = (candle.High + candle.Low + candle.Close) / 3.0m;
                             tickerUpdateSubscription.Notify(backtestProcessor.Key, new Ticker
                             {
                                 FundingRate = null,
-                                BestAskPrice = typicalPrice,
-                                BestBidPrice = typicalPrice,
-                                LastPrice = typicalPrice,
-                                Timestamp = candle.StartTime + candle.TimeFrame.ToTimeSpan(),
+                                BestAskPrice = candle.Open,
+                                BestBidPrice = candle.Open,
+                                LastPrice = candle.Open,
+                                Timestamp = candle.StartTime,
                             });
                         }
                     }
@@ -411,12 +420,12 @@ namespace CryptoBlade.BackTesting
             if (nextTime.Date != currentTime.Date)
                 await LoadDataForDayAsync(nextTime.Date, cancel);
 
-            m_currentTime = nextTime;
-            bool hasMoreData = m_currentTime < m_options.Value.End;
+            m_nextTime = nextTime;
+            bool hasMoreData = nextTime < m_options.Value.End;
             return hasMoreData;
         }
 
-        private async Task ProcessPositionsAndOrdersAsync(string symbol, Candle candle, CancellationToken cancel)
+        private async Task ProcessPositionsAndOrdersAsync(string symbol, Candle candle)
         {
             List<Order> filledOrders = new List<Order>();
             using (await m_lock.LockAsync())
@@ -425,7 +434,15 @@ namespace CryptoBlade.BackTesting
                 {
                     foreach (var order in openOrders)
                     {
-                        if (candle.High >= order.Price || candle.Low <= order.Price)
+                        bool upCandle = candle.Open < candle.Close;
+                        bool downCandle = candle.Open > candle.Close;
+                        if (order.Side == OrderSide.Sell && upCandle && order.CreateTime < candle.StartTime &&  candle.Close > order.Price)
+                        {
+                            order.Status = OrderStatus.Filled;
+                            filledOrders.Add(order);
+                        }
+
+                        if (order.Side == OrderSide.Buy && downCandle && order.CreateTime < candle.StartTime && candle.Close < order.Price)
                         {
                             order.Status = OrderStatus.Filled;
                             filledOrders.Add(order);
@@ -442,12 +459,33 @@ namespace CryptoBlade.BackTesting
                             if (!m_longPositions.TryGetValue(symbol, out var longPosition))
                                 throw new InvalidOperationException("Long position should exist");
                             var position = longPosition.Position;
-                            if (position.Quantity != filledOrder.Quantity)
-                                throw new NotSupportedException("Currently we support only full reduce.");
-                            // TODO: fees
                             var profitOrLoss = (filledOrder.Price!.Value - position.AveragePrice) * filledOrder.Quantity;
-                            await AddProfitOrLossToBalance(profitOrLoss, cancel);
-                            m_longPositions.Remove(symbol);
+                            if (position.Quantity != filledOrder.Quantity)
+                            {
+                                longPosition.AddOrder(new Order
+                                {
+                                    Symbol = filledOrder.Symbol,
+                                    Side = filledOrder.Side,
+                                    Price = filledOrder.Price,
+                                    Quantity = filledOrder.Quantity,
+                                    CreateTime = filledOrder.CreateTime,
+                                    Status = OrderStatus.Filled,
+                                    AveragePrice = filledOrder.AveragePrice,
+                                    PositionMode = filledOrder.PositionMode,
+                                    ReduceOnly = filledOrder.ReduceOnly,
+                                    OrderId = filledOrder.OrderId,
+                                    ValueRemaining = 0,
+                                    QuantityFilled = filledOrder.Quantity,
+                                    QuantityRemaining = 0,
+                                    ValueFilled = profitOrLoss,
+                                });
+                            }
+                            else
+                            {
+                                m_longPositions.Remove(symbol);
+                            }
+                            await AddProfitOrLossToBalanceAsync(profitOrLoss);
+                            
                         }
 
                         if (filledOrder.PositionMode == OrderPositionMode.BothSideSell)
@@ -455,19 +493,44 @@ namespace CryptoBlade.BackTesting
                             if (!m_shortPositions.TryGetValue(symbol, out var shortPosition))
                                 throw new InvalidOperationException("Short position should exist");
                             var position = shortPosition.Position;
-                            if (position.Quantity != filledOrder.Quantity)
-                                throw new NotSupportedException("Currently we support only full reduce.");
-                            // TODO: fees
                             var profitOrLoss = (position.AveragePrice - filledOrder.Price!.Value) * filledOrder.Quantity;
-                            await AddProfitOrLossToBalance(profitOrLoss, cancel);
+                            if (position.Quantity != filledOrder.Quantity)
+                            {
+                                shortPosition.AddOrder(new Order
+                                {
+                                    Symbol = filledOrder.Symbol,
+                                    Side = filledOrder.Side,
+                                    Price = filledOrder.Price,
+                                    Quantity = filledOrder.Quantity,
+                                    CreateTime = filledOrder.CreateTime,
+                                    Status = OrderStatus.Filled,
+                                    AveragePrice = filledOrder.AveragePrice,
+                                    PositionMode = filledOrder.PositionMode,
+                                    ReduceOnly = filledOrder.ReduceOnly,
+                                    OrderId = filledOrder.OrderId,
+                                    ValueRemaining = 0,
+                                    QuantityFilled = filledOrder.Quantity,
+                                    QuantityRemaining = 0,
+                                    ValueFilled = profitOrLoss,
+                                });
+                            }
+                            else
+                            {
+                                m_shortPositions.Remove(symbol);
+                            }
+                            
+                            await AddProfitOrLossToBalanceAsync(profitOrLoss);
                             m_shortPositions.Remove(symbol);
                         }
+
+                        decimal fee = filledOrder.Price!.Value * filledOrder.Quantity * m_options.Value.FeeRate;
+                        await AddFeeToBalanceAsync(-fee);
                     }
                 }
             }
         }
 
-        private async Task AddProfitOrLossToBalance(decimal profitOrLoss, CancellationToken cancel = default)
+        private async Task AddProfitOrLossToBalanceAsync(decimal profitOrLoss)
         {
             var balance = m_currentBalance;
             var walletBalance = balance.WalletBalance + profitOrLoss;
@@ -475,6 +538,11 @@ namespace CryptoBlade.BackTesting
             var newBalance = new Balance(walletBalance, walletBalance, null, null);
             m_currentBalance = newBalance;
             await NotifyBalanceAsync(newBalance);
+        }
+
+        private async Task AddFeeToBalanceAsync(decimal fee)
+        {
+            await AddProfitOrLossToBalanceAsync(fee);
         }
 
         private async Task LoadDataForDayAsync(DateTime day, CancellationToken cancel = default)
@@ -513,6 +581,7 @@ namespace CryptoBlade.BackTesting
         private class OpenPositionWithOrders
         {
             private readonly List<Order> m_filledOrders;
+            private Position m_position;
 
             public OpenPositionWithOrders(Order filledOrder)
             {
@@ -520,28 +589,54 @@ namespace CryptoBlade.BackTesting
                 {
                     filledOrder
                 };
+                m_position = CalculatePosition(filledOrder, null, filledOrder);
             }
 
             public void AddOrder(Order order)
             {
                 m_filledOrders.Add(order);
+                m_position = CalculatePosition(order, m_position, m_filledOrders.First());
+            }
+
+            private static Position CalculatePosition(Order order, Position? existingPosition, Order firstOrder)
+            {
+                Position position;
+                if (order.ReduceOnly!.Value)
+                {
+                    position = new Position
+                    {
+                        Symbol = firstOrder.Symbol,
+                        Side = firstOrder.Side == OrderSide.Buy ? PositionSide.Buy : PositionSide.Sell,
+                        TradeMode = TradeMode.CrossMargin,
+                        Quantity = existingPosition!.Quantity - order.Quantity,
+                        AveragePrice = existingPosition.AveragePrice,
+                    };
+                }
+                else
+                {
+                    decimal positionQuantity = existingPosition?.Quantity ?? 0;
+                    decimal positionAveragePrice = existingPosition?.AveragePrice ?? 0;
+                    var totalQuantity = positionQuantity + order.Quantity;
+                    var averagePrice = (positionAveragePrice * positionQuantity + order.Price!.Value * order.Quantity)
+                                       / (totalQuantity);
+                    position = new Position
+                    {
+                        Symbol = firstOrder.Symbol,
+                        Side = firstOrder.Side == OrderSide.Buy ? PositionSide.Buy : PositionSide.Sell,
+                        TradeMode = TradeMode.CrossMargin,
+                        Quantity = totalQuantity,
+                        AveragePrice = averagePrice,
+                    };
+                }
+                
+                return position;
             }
 
             public Position Position
             {
                 get
                 {
-                    var firstOrder = m_filledOrders.First();
-                    var averagePrice = m_filledOrders.Sum(x => x.Price!.Value * x.Quantity) / m_filledOrders.Sum(x => x.Quantity);
-                    var position = new Position
-                    {
-                        Symbol = firstOrder.Symbol,
-                        Side = firstOrder.Side == OrderSide.Buy ? PositionSide.Buy : PositionSide.Sell,
-                        TradeMode = TradeMode.CrossMargin,
-                        Quantity = m_filledOrders.Sum(x => x.Quantity),
-                        AveragePrice = averagePrice,
-                    };
-                    return position;
+                    return m_position;
                 }
             }
         }

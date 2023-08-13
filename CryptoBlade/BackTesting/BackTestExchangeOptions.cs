@@ -11,5 +11,7 @@
         public string[] Symbols { get; set; } = Array.Empty<string>();
 
         public decimal InitialBalance { get; set; } = 5000;
+
+        public decimal FeeRate { get; set; } = 0.0002m;
     }
 }

@@ -37,12 +37,12 @@ namespace CryptoBlade.BackTesting.Bybit
                         to = maxTo;
                     }
 
-                    var missingDays = await m_historicalDataStorage.FindMissingDaysAsync(symbol, from, to);
+                    var missingDays = await m_historicalDataStorage.FindMissingDaysAsync(symbol, from, to, cancel);
                     var missingDaysSet = new HashSet<DateTime>(missingDays);
 
                     // run 4 days in parallel use semaphore
                     var tasks = new List<Task>();
-                    using var semaphore = new SemaphoreSlim(1);
+                    using var semaphore = new SemaphoreSlim(4);
                     var asyncLock = new AsyncLock();
                     foreach (var day in missingDaysSet)
                     {
@@ -90,7 +90,7 @@ namespace CryptoBlade.BackTesting.Bybit
                                     Day = day,
                                     Trades = trades,
                                 };
-                                await m_historicalDataStorage.StoreAsync(symbol, historicalDayData, flush);
+                                await m_historicalDataStorage.StoreAsync(symbol, historicalDayData, flush, cancel);
                                 m_logger.LogInformation($"Downloaded {symbol} {day:yyyy-MM-dd}");
                             }
                             finally

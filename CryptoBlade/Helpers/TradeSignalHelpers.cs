@@ -1,5 +1,6 @@
 ﻿using CryptoBlade.Models;
 using CryptoBlade.Strategies.Common;
+using Microsoft.VisualBasic;
 using Skender.Stock.Indicators;
 
 namespace CryptoBlade.Helpers
@@ -75,14 +76,25 @@ namespace CryptoBlade.Helpers
 
         public static Trend GetModifiedEriTrend(Quote[] quotes)
         {
-            const int slowEmaPeriod = 64;
-            var vwma = quotes.GetVwma(slowEmaPeriod);
-            var slowMovingAverage = vwma.GetEma(slowEmaPeriod);
-            var lastAverage = slowMovingAverage.LastOrDefault();
-            var lastQuote = quotes.LastOrDefault();
-            if(lastAverage == null || lastQuote == null || !lastAverage.Ema.HasValue)
+            try
+            {
+                const int slowEmaPeriod = 64;
+                var vwma = quotes.GetVwma(slowEmaPeriod).ToArray();
+                if(vwma.All(x => !x.Vwma.HasValue))
+                    return Trend.Neutral;
+                var slowMovingAverage = vwma.GetEma(slowEmaPeriod);
+                var lastAverage = slowMovingAverage.LastOrDefault();
+                var lastQuote = quotes.LastOrDefault();
+                if(lastAverage == null || lastQuote == null || !lastAverage.Ema.HasValue)
+                    return Trend.Neutral;
+                return lastQuote.Close > (decimal)lastAverage.Ema.Value ? Trend.Short : Trend.Long;
+            }
+            catch (ArgumentOutOfRangeException)
+            {
+                // there could be some shitty symbol that has no volume
+                // it should be already handled, this is just a safety net
                 return Trend.Neutral;
-            return lastQuote.Close > (decimal)lastAverage.Ema.Value ? Trend.Short : Trend.Long;
+            }
         }
 
         public static Trend GetMfiTrend(Quote[] quotes)

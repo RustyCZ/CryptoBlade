@@ -43,7 +43,7 @@ namespace CryptoBlade.Services
                         }
 
                         var strategyState = await UpdateTradingStatesAsync(cancel);
-                        m_logger.LogInformation(
+                        m_logger.LogDebug(
                             "Total long exposure: {LongExposure}, total short exposure: {ShortExposure}, long WE: {LongWE}, short WE: {ShortWE}",
                             strategyState.TotalLongExposure,
                             strategyState.TotalShortExposure,

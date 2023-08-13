@@ -63,7 +63,7 @@ namespace CryptoBlade.Services
                         }
 
                         var strategyState = await UpdateTradingStatesAsync(cancel);
-                        m_logger.LogInformation(
+                        m_logger.LogDebug(
                             "Total long exposure: {LongExposure}, total short exposure: {ShortExposure}, long WE: {LongWE}, short WE: {ShortWE}",
                             strategyState.TotalLongExposure,
                             strategyState.TotalShortExposure,
@@ -86,7 +86,7 @@ namespace CryptoBlade.Services
 
                             var inLongTradeSymbols = Strategies.Values.Where(x => x.IsInLongTrade).ToArray();
                             var inShortTradeSymbols = Strategies.Values.Where(x => x.IsInShortTrade).ToArray();
-                            m_logger.LogInformation(
+                            m_logger.LogDebug(
                                 "Long strategies: '{LongStrategies}', short strategies: '{ShortStrategies}'",
                                 inLongTradeSymbols.Length, inShortTradeSymbols.Length);
 
@@ -102,7 +102,7 @@ namespace CryptoBlade.Services
                                                         && strategyState.TotalWalletShortExposure.HasValue
                                                         && strategyState.TotalWalletShortExposure.Value <
                                                         dynamicBotCount.TargetShortExposure;
-                            m_logger.LogInformation(
+                            m_logger.LogDebug(
                                 "Can add long positions: '{CanAddLongPositions}', can add short positions: '{CanAddShortPositions}'.",
                                 canAddLongPositions,
                                 canAddShortPositions);

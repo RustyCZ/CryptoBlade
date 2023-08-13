@@ -218,7 +218,7 @@ namespace CryptoBlade.Services
             if (orderUpdate.Status == OrderStatus.Filled)
             {
                 // we want to schedule the strategy execution for the symbol after the order is filled
-                m_logger.LogInformation($"Order {orderUpdate.OrderId} for symbol {orderUpdate.Symbol} is filled. Scheduling trade execution.");
+                m_logger.LogDebug($"Order {orderUpdate.OrderId} for symbol {orderUpdate.Symbol} is filled. Scheduling trade execution.");
                 m_strategyExecutionChannel.Writer.TryWrite(orderUpdate.Symbol);
             }
         }
@@ -242,7 +242,7 @@ namespace CryptoBlade.Services
                     bool isPrimaryCandle = strategy.RequiredTimeFrameWindows.Any(x => x.TimeFrame == candle.TimeFrame);
                     if (isPrimaryCandle)
                     {
-                        m_logger.LogInformation(
+                        m_logger.LogDebug(
                             $"Strategy {strategy.Name}:{strategy.Symbol} received primary candle. Scheduling trade execution.");
                         await m_strategyExecutionChannel.Writer.WriteAsync(strategy.Symbol, CancellationToken.None);
                     }
@@ -351,7 +351,7 @@ namespace CryptoBlade.Services
 
         protected async Task<StrategyState> UpdateTradingStatesAsync(CancellationToken cancel)
         {
-            m_logger.LogInformation("Updating trading state of all strategies.");
+            m_logger.LogDebug("Updating trading state of all strategies.");
             var orders = await GetOrdersAsync(cancel);
             var symbolsFromOrders = orders.Where(x => x.Status != OrderStatus.Cancelled
                                                       && x.Status != OrderStatus.PartiallyFilledCanceled
@@ -418,21 +418,21 @@ namespace CryptoBlade.Services
         {
             if (remainingSlots < 0)
                 remainingSlots = 0;
-            m_logger.LogInformation("Remaining strategy slots: {RemainingSlots}", remainingSlots);
+            m_logger.LogDebug("Remaining strategy slots: {RemainingSlots}", remainingSlots);
         }
 
         protected void LogRemainingLongSlots(int remainingSlots)
         {
             if (remainingSlots < 0)
                 remainingSlots = 0;
-            m_logger.LogInformation("Remaining long strategy slots: {RemainingSlots}", remainingSlots);
+            m_logger.LogDebug("Remaining long strategy slots: {RemainingSlots}", remainingSlots);
         }
 
         protected void LogRemainingShortSlots(int remainingSlots)
         {
             if (remainingSlots < 0)
                 remainingSlots = 0;
-            m_logger.LogInformation("Remaining short strategy slots: {RemainingSlots}", remainingSlots);
+            m_logger.LogDebug("Remaining short strategy slots: {RemainingSlots}", remainingSlots);
         }
 
         protected Task PrepareStrategyExecutionAsync(List<Task> strategyExecutionTasks, 

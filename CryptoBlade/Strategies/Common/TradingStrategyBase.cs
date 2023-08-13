@@ -95,7 +95,7 @@ namespace CryptoBlade.Strategies.Common
             ShortPosition = shortPosition;
             IsInLongTrade = longPosition != null || BuyOrders.Length > 0;
             IsInShortTrade = shortPosition != null || SellOrders.Length > 0;
-            m_logger.LogInformation(
+            m_logger.LogDebug(
                 $"{Name}: {Symbol} Long position: '{longPosition?.Quantity} @ {longPosition?.AveragePrice}' Short position: '{shortPosition?.Quantity} @ {shortPosition?.AveragePrice}' InTrade: '{IsInTrade}'");
             return Task.CompletedTask;
         }
@@ -170,7 +170,7 @@ namespace CryptoBlade.Strategies.Common
                 await Task.Delay(jitter, cancel); // random delay to lower probability of hitting rate limits until we have a better solution
             }
                 
-            m_logger.LogInformation($"{Name}: {Symbol} Executing strategy. TradingMode: {m_options.Value.TradingMode}");
+            m_logger.LogDebug($"{Name}: {Symbol} Executing strategy. TradingMode: {m_options.Value.TradingMode}");
 
             var buyOrders = BuyOrders;
             var sellOrders = SellOrders;
@@ -212,33 +212,33 @@ namespace CryptoBlade.Strategies.Common
                 walletShortExposure = shortExposure / wallet.WalletBalance;
 
             // log variables above
-            m_logger.LogInformation($"{Name}: {Symbol} Buy orders: '{buyOrders.Length}'; Sell orders: '{sellOrders.Length}'; Long position: '{longPosition?.Quantity}'; Short position: '{shortPosition?.Quantity}'; Has buy signal: '{hasBuySignal}'; Has sell signal: '{hasSellSignal}'; Has buy extra signal: '{hasBuyExtraSignal}'; Has sell extra signal: '{hasSellExtraSignal}'. Allow long open: '{allowLongPositionOpen}' Allow short open: '{allowShortPositionOpen}'");
+            m_logger.LogDebug($"{Name}: {Symbol} Buy orders: '{buyOrders.Length}'; Sell orders: '{sellOrders.Length}'; Long position: '{longPosition?.Quantity}'; Short position: '{shortPosition?.Quantity}'; Has buy signal: '{hasBuySignal}'; Has sell signal: '{hasSellSignal}'; Has buy extra signal: '{hasBuyExtraSignal}'; Has sell extra signal: '{hasSellExtraSignal}'. Allow long open: '{allowLongPositionOpen}' Allow short open: '{allowShortPositionOpen}'");
 
             if (m_options.Value.TradingMode == TradingMode.Readonly)
             {
-                m_logger.LogInformation($"{Name}: {Symbol} Finished executing strategy. ReadOnly: {m_options.Value.TradingMode}");
+                m_logger.LogDebug($"{Name}: {Symbol} Finished executing strategy. ReadOnly: {m_options.Value.TradingMode}");
                 return;
             }
 
             if (!hasBuySignal && !hasBuyExtraSignal && buyOrders.Any())
             {
-                m_logger.LogInformation($"{Name}: {Symbol} no buy signal. Canceling buy orders.");
+                m_logger.LogDebug($"{Name}: {Symbol} no buy signal. Canceling buy orders.");
                 // cancel outstanding buy orders
                 foreach (Order buyOrder in buyOrders)
                 {
                     bool canceled = await CancelOrderAsync(buyOrder.OrderId, cancel);
-                    m_logger.LogInformation($"{Name}: {Symbol} Canceling buy order '{buyOrder.OrderId}' {(canceled ? "succeeded" : "failed")}");
+                    m_logger.LogDebug($"{Name}: {Symbol} Canceling buy order '{buyOrder.OrderId}' {(canceled ? "succeeded" : "failed")}");
                 }
             }
 
             if (!hasSellSignal && !hasSellExtraSignal && sellOrders.Any())
             {
-                m_logger.LogInformation($"{Name}: {Symbol} no sell signal. Canceling sell orders.");
+                m_logger.LogDebug($"{Name}: {Symbol} no sell signal. Canceling sell orders.");
                 // cancel outstanding sell orders
                 foreach (Order sellOrder in sellOrders)
                 {
                     bool canceled = await CancelOrderAsync(sellOrder.OrderId, cancel);
-                    m_logger.LogInformation($"{Name}: {Symbol} Canceling sell order '{sellOrder.OrderId}' {(canceled ? "succeeded" : "failed")}");
+                    m_logger.LogDebug($"{Name}: {Symbol} Canceling sell order '{sellOrder.OrderId}' {(canceled ? "succeeded" : "failed")}");
                 }
             }
 
@@ -260,7 +260,7 @@ namespace CryptoBlade.Strategies.Common
                     && canOpenLongPosition
                     && LongFundingWithinLimit(ticker))
                 {
-                    m_logger.LogInformation($"{Name}: {Symbol} trying to open long position");
+                    m_logger.LogDebug($"{Name}: {Symbol} trying to open long position");
                     await PlaceLimitBuyOrderAsync(dynamicQtyLong.Value, ticker.BestBidPrice, lastPrimaryQuote.Date, cancel);
                 }
 
@@ -272,7 +272,7 @@ namespace CryptoBlade.Strategies.Common
                     && canOpenShortPosition
                     && ShortFundingWithinLimit(ticker))
                 {
-                    m_logger.LogInformation($"{Name}: {Symbol} trying to open short position");
+                    m_logger.LogDebug($"{Name}: {Symbol} trying to open short position");
                     await PlaceLimitSellOrderAsync(dynamicQtyShort.Value, ticker.BestAskPrice, lastPrimaryQuote.Date, cancel);
                 }
 
@@ -285,7 +285,7 @@ namespace CryptoBlade.Strategies.Common
                     && dynamicQtyLong.HasValue
                     && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleLongOrder))
                 {
-                    m_logger.LogInformation($"{Name}: {Symbol} trying to add to open long position");
+                    m_logger.LogDebug($"{Name}: {Symbol} trying to add to open long position");
                     await PlaceLimitBuyOrderAsync(dynamicQtyLong.Value, ticker.BestBidPrice, lastPrimaryQuote.Date, cancel);
                 }
 
@@ -298,7 +298,7 @@ namespace CryptoBlade.Strategies.Common
                     && dynamicQtyShort.HasValue
                     && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleShortOrder))
                 {
-                    m_logger.LogInformation($"{Name}: {Symbol} trying to add to open short position");
+                    m_logger.LogDebug($"{Name}: {Symbol} trying to add to open short position");
                     await PlaceLimitSellOrderAsync(dynamicQtyShort.Value, ticker.BestAskPrice, lastPrimaryQuote.Date, cancel);
                 }
             }
@@ -315,10 +315,10 @@ namespace CryptoBlade.Strategies.Common
                 {
                     foreach (Order longTakeProfitOrder in longTakeProfitOrders)
                     {
-                        m_logger.LogInformation($"{Name}: {Symbol} Canceling long take profit order '{longTakeProfitOrder.OrderId}'");
+                        m_logger.LogDebug($"{Name}: {Symbol} Canceling long take profit order '{longTakeProfitOrder.OrderId}'");
                         await CancelOrderAsync(longTakeProfitOrder.OrderId, cancel);
                     }
-                    m_logger.LogInformation($"{Name}: {Symbol} Placing long take profit order for '{longPosition.Quantity}' @ '{longTakeProfitPrice.Value}'");
+                    m_logger.LogDebug($"{Name}: {Symbol} Placing long take profit order for '{longPosition.Quantity}' @ '{longTakeProfitPrice.Value}'");
                     await PlaceLongTakeProfitOrderAsync(longPosition.Quantity, longTakeProfitPrice.Value, cancel);
                     NextLongProfitReplacement = utcNow + replacementTime;
                 }
@@ -331,16 +331,16 @@ namespace CryptoBlade.Strategies.Common
                 {
                     foreach (Order shortTakeProfitOrder in shortTakeProfitOrders)
                     {
-                        m_logger.LogInformation($"{Name}: {Symbol} Canceling short take profit order '{shortTakeProfitOrder.OrderId}'");
+                        m_logger.LogDebug($"{Name}: {Symbol} Canceling short take profit order '{shortTakeProfitOrder.OrderId}'");
                         await CancelOrderAsync(shortTakeProfitOrder.OrderId, cancel);
                     }
-                    m_logger.LogInformation($"{Name}: {Symbol} Placing short take profit order for '{shortPosition.Quantity}' @ '{shortTakeProfitPrice.Value}'");
+                    m_logger.LogDebug($"{Name}: {Symbol} Placing short take profit order for '{shortPosition.Quantity}' @ '{shortTakeProfitPrice.Value}'");
                     await PlaceShortTakeProfitOrderAsync(shortPosition.Quantity, shortTakeProfitPrice.Value, cancel);
                     NextShortProfitReplacement = utcNow + replacementTime;
                 }
             }
 
-            m_logger.LogInformation($"{Name}: {Symbol} Finished executing strategy. TradingMode: {m_options.Value.TradingMode}");
+            m_logger.LogDebug($"{Name}: {Symbol} Finished executing strategy. TradingMode: {m_options.Value.TradingMode}");
         }
 
         public async Task AddCandleDataAsync(Candle candle, CancellationToken cancel)

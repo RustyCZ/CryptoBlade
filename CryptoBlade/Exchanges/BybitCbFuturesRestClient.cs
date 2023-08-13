@@ -132,7 +132,7 @@ namespace CryptoBlade.Exchanges
         {
             for (int attempt = 0; attempt < m_options.Value.PlaceOrderAttempts; attempt++)
             {
-                m_logger.LogInformation($"{symbol} Placing limit buy order for '{quantity}' @ '{price}'");
+                m_logger.LogDebug($"{symbol} Placing limit buy order for '{quantity}' @ '{price}'");
                 var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
                     .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
                         category: m_category,
@@ -160,7 +160,7 @@ namespace CryptoBlade.Exchanges
                         .FirstOrDefault(x => string.Equals(x.OrderId, buyOrder.OrderId, StringComparison.Ordinal));
                     if (order != null && order.Status == OrderStatus.Cancelled)
                     {
-                        m_logger.LogInformation($"{symbol}: Buy order was cancelled. Adjusting price.");
+                        m_logger.LogDebug($"{symbol}: Buy order was cancelled. Adjusting price.");
                         var orderBook = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderbook>
                             .RetryTooManyVisits
                             .ExecuteAsync(async () =>
@@ -179,7 +179,7 @@ namespace CryptoBlade.Exchanges
                         continue;
                     }
 
-                    m_logger.LogInformation($"{symbol} Buy order placed for '{quantity}' @ '{price}'");
+                    m_logger.LogDebug($"{symbol} Buy order placed for '{quantity}' @ '{price}'");
                     return true;
                 }
 
@@ -187,7 +187,7 @@ namespace CryptoBlade.Exchanges
                 return false;
             }
 
-            m_logger.LogInformation($"{symbol} could not place buy order.");
+            m_logger.LogDebug($"{symbol} could not place buy order.");
 
             return false;
         }
@@ -197,7 +197,7 @@ namespace CryptoBlade.Exchanges
         {
             for (int attempt = 0; attempt < m_options.Value.PlaceOrderAttempts; attempt++)
             {
-                m_logger.LogInformation(
+                m_logger.LogDebug(
                     $"{symbol} Placing limit sell order for '{quantity}' @ '{price}' attempt: {attempt}");
                 var sellOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
                     .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
@@ -226,7 +226,7 @@ namespace CryptoBlade.Exchanges
                         .FirstOrDefault(x => string.Equals(x.OrderId, sellOrder.OrderId, StringComparison.Ordinal));
                     if (order != null && order.Status == OrderStatus.Cancelled)
                     {
-                        m_logger.LogInformation($"{symbol} Sell order was cancelled. Adjusting price.");
+                        m_logger.LogDebug($"{symbol} Sell order was cancelled. Adjusting price.");
                         var orderBook = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderbook>
                             .RetryTooManyVisits
                             .ExecuteAsync(async () =>
@@ -245,7 +245,7 @@ namespace CryptoBlade.Exchanges
                         continue;
                     }
 
-                    m_logger.LogInformation($"{symbol} Sell order placed for '{quantity}' @ '{price}'");
+                    m_logger.LogDebug($"{symbol} Sell order placed for '{quantity}' @ '{price}'");
                     return true;
                 }
 
@@ -253,7 +253,7 @@ namespace CryptoBlade.Exchanges
                 return false;
             }
 
-            m_logger.LogInformation($"{symbol} could not place sell order.");
+            m_logger.LogDebug($"{symbol} could not place sell order.");
             return false;
         }
 

@@ -193,7 +193,6 @@ namespace CryptoBlade
                     })
                 .AddLogging(options =>
                 {
-                    options.SetMinimumLevel(LogLevel.Trace);
                     options.AddSimpleConsole(o =>
                     {
                         o.UseUtcTimestamp = true;

@@ -96,6 +96,7 @@ namespace CryptoBlade.BackTesting
                 UnrealizedPnl = m_balanceHistory.Last().Balance.UnrealizedPnl!.Value,
                 RealizedPnl = m_balanceHistory.Last().Balance.RealizedPnl!.Value,
                 AverageDailyGainPercent = dailyGainPercent,
+                TotalDays = numberOfDays,
             };
             var directory = Path.Combine(m_options.Value.BackTestsDirectory, m_testId);
             Directory.CreateDirectory(directory);
@@ -103,6 +104,12 @@ namespace CryptoBlade.BackTesting
 
             string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json);
+
+            string filePathDetailed = Path.Combine(directory, "result_detailed.json");
+            var openPositions = await m_backTestExchange.GetOpenPositionsWithOrdersAsync();
+            result.OpenPositionWithOrders = openPositions;
+            json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(filePathDetailed, json);
         }
 
         private void PlotBalanceAndEquity()
@@ -148,5 +155,7 @@ namespace CryptoBlade.BackTesting
         public decimal UnrealizedPnl { get; set; }
         public decimal RealizedPnl { get; set; }
         public decimal AverageDailyGainPercent { get; set; }
+        public int TotalDays { get; set; }
+        public OpenPositionWithOrders[] OpenPositionWithOrders { get; set; } = Array.Empty<OpenPositionWithOrders>();
     }
 }

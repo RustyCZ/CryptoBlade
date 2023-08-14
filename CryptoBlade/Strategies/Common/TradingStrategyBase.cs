@@ -300,7 +300,8 @@ namespace CryptoBlade.Strategies.Common
                     && walletLongExposure.HasValue && walletLongExposure.Value < m_options.Value.WalletExposureLong
                     && !buyOrders.Any()
                     && dynamicQtyLong.HasValue
-                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleLongOrder))
+                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleLongOrder)
+                    && LongFundingWithinLimit(ticker))
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open long position");
                     await PlaceLimitBuyOrderAsync(dynamicQtyLong.Value, ticker.BestBidPrice, lastPrimaryQuote.Date, cancel);
@@ -313,7 +314,8 @@ namespace CryptoBlade.Strategies.Common
                     && walletShortExposure.HasValue && walletShortExposure.Value < m_options.Value.WalletExposureShort
                     && !sellOrders.Any()
                     && dynamicQtyShort.HasValue
-                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleShortOrder))
+                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleShortOrder)
+                    && ShortFundingWithinLimit(ticker))
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open short position");
                     await PlaceLimitSellOrderAsync(dynamicQtyShort.Value, ticker.BestAskPrice, lastPrimaryQuote.Date, cancel);

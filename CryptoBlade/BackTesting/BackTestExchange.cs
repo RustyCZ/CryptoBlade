@@ -47,6 +47,8 @@ namespace CryptoBlade.BackTesting
             m_longPositions = new Dictionary<string, OpenPositionWithOrders>();
             m_shortPositions = new Dictionary<string, OpenPositionWithOrders>();
         }
+        
+        public DateTime CurrentTime => m_currentTime;
 
         public Task<bool> SetLeverageAsync(SymbolInfo symbol, CancellationToken cancel = default)
         {
@@ -484,7 +486,7 @@ namespace CryptoBlade.BackTesting
                             {
                                 m_longPositions.Remove(symbol);
                             }
-                            await AddProfitOrLossToBalanceAsync(profitOrLoss);
+                            await UpdateBalanceAsync(profitOrLoss);
                             
                         }
 
@@ -519,7 +521,7 @@ namespace CryptoBlade.BackTesting
                                 m_shortPositions.Remove(symbol);
                             }
                             
-                            await AddProfitOrLossToBalanceAsync(profitOrLoss);
+                            await UpdateBalanceAsync(profitOrLoss);
                             m_shortPositions.Remove(symbol);
                         }
 
@@ -527,22 +529,52 @@ namespace CryptoBlade.BackTesting
                         await AddFeeToBalanceAsync(-fee);
                     }
                 }
+
+                if (m_longPositions.TryGetValue(symbol, out var lp))
+                {
+                    lp.UpdateUnrealizedProfitOrLoss(candle);
+                    await UpdateUnrealizedBalanceAsync();
+                }
+
+                if (m_shortPositions.TryGetValue(symbol, out var sp))
+                {
+                    sp.UpdateUnrealizedProfitOrLoss(candle);
+                    await UpdateUnrealizedBalanceAsync();
+                }
             }
         }
 
-        private async Task AddProfitOrLossToBalanceAsync(decimal profitOrLoss)
+        private async Task UpdateBalanceAsync(decimal profitOrLoss)
         {
             var balance = m_currentBalance;
             var walletBalance = balance.WalletBalance + profitOrLoss;
-            // todo calculate parts
-            var newBalance = new Balance(walletBalance, walletBalance, null, null);
+            var realizedProfitAndLoss = balance.RealizedPnl + profitOrLoss;
+            var unrealizedProfitAndLoss = CalculateUnrealizedProfitAndLoss();
+            var equity = walletBalance + unrealizedProfitAndLoss;
+            var newBalance = new Balance(equity, walletBalance, unrealizedProfitAndLoss, realizedProfitAndLoss);
             m_currentBalance = newBalance;
             await NotifyBalanceAsync(newBalance);
         }
 
+        private decimal CalculateUnrealizedProfitAndLoss()
+        {
+            decimal profitAndLoss = 0;
+            foreach (var position in m_longPositions.Values)
+                profitAndLoss += position.UnrealizedProfitOrLoss;
+
+            foreach (var position in m_shortPositions.Values)
+                profitAndLoss += position.UnrealizedProfitOrLoss;
+            return profitAndLoss;
+        }
+
         private async Task AddFeeToBalanceAsync(decimal fee)
         {
-            await AddProfitOrLossToBalanceAsync(fee);
+            await UpdateBalanceAsync(fee);
+        }
+
+        private async Task UpdateUnrealizedBalanceAsync()
+        {
+            await UpdateBalanceAsync(0m);
         }
 
         private async Task LoadDataForDayAsync(DateTime day, CancellationToken cancel = default)
@@ -592,6 +624,18 @@ namespace CryptoBlade.BackTesting
                 m_position = CalculatePosition(filledOrder, null, filledOrder);
             }
 
+            public Position Position => m_position;
+
+            public decimal UnrealizedProfitOrLoss { get; private set; }
+
+            public void UpdateUnrealizedProfitOrLoss(Candle candle)
+            {
+                if (Position.Side == PositionSide.Buy)
+                    UnrealizedProfitOrLoss = (candle.Close - Position.AveragePrice) * Position.Quantity;
+                else if(Position.Side == PositionSide.Sell)
+                    UnrealizedProfitOrLoss = (Position.AveragePrice - candle.Close) * Position.Quantity;
+            }
+
             public void AddOrder(Order order)
             {
                 m_filledOrders.Add(order);
@@ -630,14 +674,6 @@ namespace CryptoBlade.BackTesting
                 }
                 
                 return position;
-            }
-
-            public Position Position
-            {
-                get
-                {
-                    return m_position;
-                }
             }
         }
 

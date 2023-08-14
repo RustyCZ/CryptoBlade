@@ -127,6 +127,11 @@ namespace CryptoBlade
             builder.Services.AddSingleton<ICbFuturesRestClient>(sp => sp.GetRequiredService<BackTestExchange>());
             builder.Services.AddSingleton<ICbFuturesSocketClient>(sp => sp.GetRequiredService<BackTestExchange>());
             builder.Services.AddSingleton<IBackTestRunner>(sp => sp.GetRequiredService<BackTestExchange>());
+            builder.Services.AddHostedService<BackTestPerformanceTracker>();
+            builder.Services.AddOptions<BackTestPerformanceTrackerOptions>().Configure(x =>
+            {
+                x.BackTestsDirectory = "BackTests";
+            });
         }
 
         private static BybitCbFuturesRestClient CreateUnauthorizedBybitClient()

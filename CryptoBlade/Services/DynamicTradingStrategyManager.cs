@@ -194,7 +194,8 @@ namespace CryptoBlade.Services
                     }
                     catch (Exception e)
                     {
-                        m_logger.LogError(e, "Error while executing strategies");
+                        if(e is not OperationCanceledException)
+                            m_logger.LogError(e, "Error while executing strategies");
                     }
                     finally
                     {

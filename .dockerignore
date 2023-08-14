@@ -22,5 +22,9 @@
 **/secrets.dev.yaml
 **/values.dev.yaml
 CryptoBlade/HistoricalData
+CryptoBlade/BackTests
 LICENSE
 README.md
+cryptoblade.tar
+Samples/BackTest/BackTests
+Samples/BackTest/HistoricalData

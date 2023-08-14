@@ -12,6 +12,8 @@ namespace CryptoBlade.Helpers
             decimal walletExposure,
             decimal dcaMultiplier)
         {
+            if (price == 0)
+                return null;
             decimal? walletBalance = walletManager.Contract.WalletBalance;
             if (!walletBalance.HasValue)
                 return null;

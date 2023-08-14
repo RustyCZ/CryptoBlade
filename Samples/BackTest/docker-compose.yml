@@ -1,0 +1,42 @@
+version: '3.4'
+
+services:
+  cryptoblade:
+    image: cryptoblade:latest
+    restart: unless-stopped
+    labels:
+        - "autoheal=true"
+    ports:
+        - 8090:80
+    volumes:
+        - ./BackTests:/app/BackTests
+        - ./HistoricalData:/app/HistoricalData
+    environment:
+        - CB_TradingBot__Accounts__0__ApiKey=
+        - CB_TradingBot__Accounts__0__ApiSecret=
+        - CB_TradingBot__StrategyName=AutoHedge
+        - CB_TradingBot__MaxRunningStrategies=50
+        - CB_TradingBot__WalletExposureLong=2.0
+        - CB_TradingBot__WalletExposureShort=2.0
+        - CB_TradingBot__ForceMinQty=false
+        - CB_TradingBot__TradingMode=DynamicBackTest
+        - CB_TradingBot__DcaOrdersCount=1000
+        - CB_TradingBot__DynamicBotCount__TargetLongExposure=2.0
+        - CB_TradingBot__DynamicBotCount__TargetShortExposure=1.0
+        - CB_TradingBot__DynamicBotCount__MaxLongStrategies=50
+        - CB_TradingBot__DynamicBotCount__MaxShortStrategies=50
+        - CB_TradingBot__DynamicBotCount__MaxDynamicStrategyOpenPerStep=6
+        - CB_TradingBot__DynamicBotCount__Step=0.00:03:00
+        - CB_TradingBot__BackTest__InitialBalance=5000
+        - CB_TradingBot__BackTest__Start=2023-01-01
+        - CB_TradingBot__BackTest__End=2023-08-10
+        - CB_TradingBot__Whitelist__0=SOLUSDT
+        - CB_TradingBot__Whitelist__1=1000PEPEUSDT
+        - CB_TradingBot__Whitelist__2=OPUSDT
+        - CB_TradingBot__Whitelist__3=XRPUSDT
+        - CB_TradingBot__Whitelist__4=MATICUSDT
+        - CB_TradingBot__Whitelist__5=LINKUSDT
+        - CB_TradingBot__Whitelist__6=DOGEUSDT
+        - CB_TradingBot__Whitelist__7=ARBUSDT
+        - CB_TradingBot__Whitelist__8=COMPUSDT
+        - CB_TradingBot__Whitelist__9=NEARUSDT

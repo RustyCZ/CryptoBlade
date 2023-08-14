@@ -4,6 +4,9 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 CryptoBlade/HistoricalData
 CryptoBlade/BackTests
+cryptoblade.tar
+Samples/BackTest/BackTests
+Samples/BackTest/HistoricalData
 # User-specific files
 *.rsuser
 *.suo

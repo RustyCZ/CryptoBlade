@@ -52,7 +52,7 @@ namespace CryptoBlade.BackTesting
 
         public Task<OpenPositionWithOrders[]> GetOpenPositionsWithOrdersAsync(CancellationToken cancel = default)
         {
-            return Task.FromResult(m_longPositions.Values.Concat(m_shortPositions.Values).ToArray());
+            return Task.FromResult(m_longPositions.Values.Concat(m_shortPositions.Values).ToArray().Select(x => x.Clone()).ToArray());
         }
 
         public Task<bool> SetLeverageAsync(SymbolInfo symbol, CancellationToken cancel = default)

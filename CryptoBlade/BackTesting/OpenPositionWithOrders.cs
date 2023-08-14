@@ -16,6 +16,13 @@ namespace CryptoBlade.BackTesting
             m_position = CalculatePosition(filledOrder, null, filledOrder);
         }
 
+        protected OpenPositionWithOrders(List<Order> filledOrders, Position position, decimal unrealizedProfitOrLoss)
+        {
+            m_filledOrders = filledOrders;
+            m_position = position;
+            UnrealizedProfitOrLoss = unrealizedProfitOrLoss;
+        }
+
         public Position Position => m_position;
 
         public decimal UnrealizedProfitOrLoss { get; private set; }
@@ -68,6 +75,12 @@ namespace CryptoBlade.BackTesting
             }
 
             return position;
+        }
+
+        public OpenPositionWithOrders Clone()
+        {
+            return new OpenPositionWithOrders(m_filledOrders.Select(x => x.Clone()).ToList(), m_position.Clone(),
+                               UnrealizedProfitOrLoss);
         }
     }
 }

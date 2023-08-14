@@ -33,5 +33,26 @@ namespace CryptoBlade.Models
         public bool? ReduceOnly { get; set; }
 
         public DateTime CreateTime { get; set; }
+
+        public Order Clone()
+        {
+            return new Order
+            {
+                OrderId = OrderId,
+                Symbol = Symbol,
+                Price = Price,
+                Quantity = Quantity,
+                Side = Side,
+                PositionMode = PositionMode,
+                Status = Status,
+                AveragePrice = AveragePrice,
+                QuantityRemaining = QuantityRemaining,
+                ValueRemaining = ValueRemaining,
+                QuantityFilled = QuantityFilled,
+                ValueFilled = ValueFilled,
+                ReduceOnly = ReduceOnly,
+                CreateTime = CreateTime
+            };
+        }
     }
 }

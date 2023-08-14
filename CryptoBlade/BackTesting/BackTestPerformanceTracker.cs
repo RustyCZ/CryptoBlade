@@ -20,15 +20,18 @@ namespace CryptoBlade.BackTesting
         private readonly AsyncLock m_lock;
         private readonly string m_testId;
         private readonly IHostApplicationLifetime m_applicationLifetime;
+        private readonly ILogger<BackTestPerformanceTracker> m_logger;
 
         public BackTestPerformanceTracker(IOptions<BackTestPerformanceTrackerOptions> options,
             BackTestExchange backTestExchange, 
-            IHostApplicationLifetime applicationLifetime)
+            IHostApplicationLifetime applicationLifetime, 
+            ILogger<BackTestPerformanceTracker> logger)
         {
             m_balanceHistory = new List<BalanceInTime>();
             m_lowestEquityToBalance = 1.0m;
             m_backTestExchange = backTestExchange;
             m_applicationLifetime = applicationLifetime;
+            m_logger = logger;
             m_options = options;
             m_lock = new AsyncLock();
             m_testId= $"{DateTime.Now:yyyyMMddHHmm}-{Guid.NewGuid().ToString("N")}";
@@ -76,8 +79,22 @@ namespace CryptoBlade.BackTesting
 
             using (await m_lock.LockAsync(cancellationToken))
             {
-                PlotBalanceAndEquity();
-                await SaveBacktestResultsAsync();
+                try
+                {
+                    await SaveBacktestResultsAsync();
+                }
+                catch (Exception e)
+                {
+                    m_logger.LogError(e, "Failed to save backtest results");
+                }
+                try
+                {
+                    PlotBalanceAndEquity();
+                }
+                catch (Exception e)
+                {
+                    m_logger.LogError(e, "Failed to plot balance and equity");
+                }
             }
         }
 

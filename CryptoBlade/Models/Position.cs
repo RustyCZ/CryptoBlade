@@ -11,5 +11,17 @@
         public decimal AveragePrice { get; set; }
 
         public TradeMode TradeMode { get; set; }
+
+        public Position Clone()
+        {
+            return new Position
+            {
+                Symbol = Symbol,
+                Side = Side,
+                Quantity = Quantity,
+                AveragePrice = AveragePrice,
+                TradeMode = TradeMode
+            };
+        }
     }
 }

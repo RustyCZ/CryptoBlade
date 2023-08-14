@@ -20,6 +20,7 @@ namespace CryptoBlade.Strategies
     {
         private readonly IOptions<MfiRsiEriTrendTradingStrategyOptions> m_options;
         private const int c_candlePeriod = 200;
+        private const int c_untradableFirstDays = 30;
 
         public MfiRsiEriTrendTradingStrategy(IOptions<MfiRsiEriTrendTradingStrategyOptions> options, 
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient) 
@@ -98,14 +99,17 @@ namespace CryptoBlade.Strategies
                 bool hasMinVolume = volume >= m_options.Value.MinimumVolume;
                 bool shouldAddToShort = false;
                 bool shouldAddToLong = false;
-                if (ticker != null)
+                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > c_untradableFirstDays;
+                if (ticker != null 
+                    && ma6HighLast != null && ma6HighLast.Sma.HasValue
+                    && ma6LowLast != null && ma6LowLast.Sma.HasValue)
                 {
                     shouldAddToShort =
                         TradeSignalHelpers.ShortCounterTradeCondition(ticker.BestAskPrice,
-                            (decimal)ma6HighLast!.Sma!.Value);
+                            (decimal)ma6HighLast.Sma.Value);
                     shouldAddToLong =
                         TradeSignalHelpers.LongCounterTradeCondition(ticker.BestBidPrice,
-                            (decimal)ma6LowLast!.Sma!.Value);
+                            (decimal)ma6LowLast.Sma.Value);
                 }
 
                 Position? longPosition = LongPosition;
@@ -115,13 +119,15 @@ namespace CryptoBlade.Strategies
                                && hasAllRequiredMa
                                && mfiTrend == Trend.Long
                                && (eriTrend == Trend.Long || movingAverageTrend == Trend.Long)
-                               && hasMinSpread;
+                               && hasMinSpread
+                               && canBeTraded;
 
                 hasSellSignal = hasMinVolume
                                 && hasAllRequiredMa
                                 && mfiTrend == Trend.Short
                                 && (eriTrend == Trend.Short || movingAverageTrend == Trend.Short)
-                                && hasMinSpread;
+                                && hasMinSpread
+                                && canBeTraded;
 
                 hasBuyExtraSignal = hasMinVolume
                                     && shouldAddToLong
@@ -131,7 +137,8 @@ namespace CryptoBlade.Strategies
                                     && hasMinSpread
                                     && longPosition != null
                                     && ticker != null
-                                    && ticker.BestBidPrice < longPosition.AveragePrice;
+                                    && ticker.BestBidPrice < longPosition.AveragePrice
+                                    && canBeTraded;
 
                 hasSellExtraSignal = hasMinVolume
                                      && shouldAddToShort
@@ -141,7 +148,8 @@ namespace CryptoBlade.Strategies
                                      && hasMinSpread
                                      && shortPosition != null
                                      && ticker != null
-                                     && ticker.BestAskPrice > shortPosition.AveragePrice;
+                                     && ticker.BestAskPrice > shortPosition.AveragePrice
+                                     && canBeTraded;
 
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.Volume1Min), volume));
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.MainTimeFrameVolume), volume));

@@ -12,6 +12,7 @@ namespace CryptoBlade.Strategies
     {
         private readonly IOptions<AutoHedgeStrategyOptions> m_options;
         private const int c_candlePeriod = 50;
+        private const int c_untradableFirstDays = 30;
 
         public AutoHedgeStrategy(IOptions<AutoHedgeStrategyOptions> options,
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient) 
@@ -63,8 +64,10 @@ namespace CryptoBlade.Strategies
             bool hasSellSignal = false;
             bool hasBuyExtraSignal = false;
             bool hasSellExtraSignal = false;
+            
             if (lastQuote != null)
             {
+                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > c_untradableFirstDays;
                 var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes);
                 var volume = TradeSignalHelpers.VolumeInQuoteCurrency(lastQuote);
                 var sma = quotes.GetSma(14);
@@ -98,28 +101,34 @@ namespace CryptoBlade.Strategies
                 bool shouldLong = false;
                 bool shouldAddToShort = false;
                 bool shouldAddToLong = false;
-                if (ticker != null)
+                if (ticker != null 
+                    && ma3HighLast != null && ma3HighLast.Sma.HasValue
+                    && ma3LowLast != null && ma3LowLast.Sma.HasValue
+                    && ma6HighLast != null && ma6HighLast.Sma.HasValue
+                    && ma6LowLast != null && ma6LowLast.Sma.HasValue)
                 {
-                    shouldShort = TradeSignalHelpers.ShortCounterTradeCondition(ticker.BestAskPrice, (decimal)ma3HighLast!.Sma!.Value);
-                    shouldLong = TradeSignalHelpers.LongCounterTradeCondition(ticker.BestBidPrice, (decimal)ma3LowLast!.Sma!.Value);
-                    shouldAddToShort = TradeSignalHelpers.ShortCounterTradeCondition(ticker.BestAskPrice, (decimal)ma6HighLast!.Sma!.Value);
-                    shouldAddToLong = TradeSignalHelpers.LongCounterTradeCondition(ticker.BestBidPrice, (decimal)ma6LowLast!.Sma!.Value);
+                    shouldShort = TradeSignalHelpers.ShortCounterTradeCondition(ticker.BestAskPrice, (decimal)ma3HighLast.Sma!.Value);
+                    shouldLong = TradeSignalHelpers.LongCounterTradeCondition(ticker.BestBidPrice, (decimal)ma3LowLast.Sma!.Value);
+                    shouldAddToShort = TradeSignalHelpers.ShortCounterTradeCondition(ticker.BestAskPrice, (decimal)ma6HighLast.Sma!.Value);
+                    shouldAddToLong = TradeSignalHelpers.LongCounterTradeCondition(ticker.BestBidPrice, (decimal)ma6LowLast.Sma!.Value);
                 }
 
                 Position? longPosition = LongPosition;
                 Position? shortPosition = ShortPosition;
-                hasBuySignal = hasMinVolume 
-                               && shouldLong 
-                               && hasAllRequiredMa 
-                               && trend == Trend.Long 
-                               && hasMinSpread;
-                
+                hasBuySignal = hasMinVolume
+                               && shouldLong
+                               && hasAllRequiredMa
+                               && trend == Trend.Long
+                               && hasMinSpread
+                               && canBeTraded;
+
                 hasSellSignal = hasMinVolume 
                                 && shouldShort 
                                 && hasAllRequiredMa 
                                 && trend == Trend.Short 
-                                && hasMinSpread;
-                
+                                && hasMinSpread
+                                && canBeTraded;
+
                 hasBuyExtraSignal = hasMinVolume 
                                     && shouldAddToLong 
                                     && hasAllRequiredMa 
@@ -127,8 +136,9 @@ namespace CryptoBlade.Strategies
                                     && hasMinSpread 
                                     && longPosition != null
                                     && ticker != null
-                                    && ticker.BestBidPrice < longPosition.AveragePrice;
-                
+                                    && ticker.BestBidPrice < longPosition.AveragePrice
+                                    && canBeTraded;
+
                 hasSellExtraSignal = hasMinVolume 
                                      && shouldAddToShort 
                                      && hasAllRequiredMa 
@@ -136,7 +146,8 @@ namespace CryptoBlade.Strategies
                                      && hasMinSpread
                                      && shortPosition != null
                                      && ticker != null
-                                     && ticker.BestAskPrice > shortPosition.AveragePrice;
+                                     && ticker.BestAskPrice > shortPosition.AveragePrice
+                                     && canBeTraded;
 
                 if (hasAllRequiredMa)
                 {

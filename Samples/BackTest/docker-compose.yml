@@ -3,7 +3,6 @@ version: '3.4'
 services:
   cryptoblade:
     image: cryptoblade:latest
-    restart: unless-stopped
     labels:
         - "autoheal=true"
     ports:
@@ -14,7 +13,7 @@ services:
     environment:
         - CB_TradingBot__Accounts__0__ApiKey=
         - CB_TradingBot__Accounts__0__ApiSecret=
-        - CB_TradingBot__StrategyName=AutoHedge
+        - CB_TradingBot__StrategyName=MfiRsiEriTrend
         - CB_TradingBot__MaxRunningStrategies=50
         - CB_TradingBot__WalletExposureLong=2.0
         - CB_TradingBot__WalletExposureShort=2.0
@@ -28,7 +27,7 @@ services:
         - CB_TradingBot__DynamicBotCount__MaxDynamicStrategyOpenPerStep=6
         - CB_TradingBot__DynamicBotCount__Step=0.00:03:00
         - CB_TradingBot__BackTest__InitialBalance=5000
-        - CB_TradingBot__BackTest__Start=2023-01-01
+        - CB_TradingBot__BackTest__Start=2023-07-01
         - CB_TradingBot__BackTest__End=2023-08-10
         - CB_TradingBot__Whitelist__0=SOLUSDT
         - CB_TradingBot__Whitelist__1=1000PEPEUSDT

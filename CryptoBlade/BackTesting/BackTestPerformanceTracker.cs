@@ -102,13 +102,15 @@ namespace CryptoBlade.BackTesting
         {
             decimal initialBalance = m_balanceHistory.First().Balance.WalletBalance!.Value;
             decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value;
+            decimal finalEquity = m_balanceHistory.Last().Balance.Equity!.Value;
             int numberOfDays = (int)(m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays;
             decimal dailyGain = (decimal)Math.Pow((double)(finalBalance / initialBalance), 1.0 / numberOfDays) - 1;
             decimal dailyGainPercent = dailyGain * 100.0m;
             BacktestPerformanceResult result = new BacktestPerformanceResult
             {
                 InitialBalance = initialBalance,
-                FinalBalance = finalBalance,
+                FinalEquity = finalEquity,
+                FinalBalance = finalEquity < 0 ? 0 : finalBalance,
                 LowestEquityToBalance = m_lowestEquityToBalance,
                 UnrealizedPnl = m_balanceHistory.Last().Balance.UnrealizedPnl!.Value,
                 RealizedPnl = m_balanceHistory.Last().Balance.RealizedPnl!.Value,
@@ -168,6 +170,7 @@ namespace CryptoBlade.BackTesting
     {
         public decimal InitialBalance { get; set; }
         public decimal FinalBalance { get; set; }
+        public decimal FinalEquity { get; set; }
         public decimal LowestEquityToBalance { get; set; }
         public decimal UnrealizedPnl { get; set; }
         public decimal RealizedPnl { get; set; }

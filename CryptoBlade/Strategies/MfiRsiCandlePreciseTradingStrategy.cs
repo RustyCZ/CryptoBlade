@@ -14,6 +14,7 @@ namespace CryptoBlade.Strategies
     {
         private readonly IOptions<MfiRsiCandlePreciseTradingStrategyOptions> m_options;
         private const int c_candlePeriod = 50;
+        private const int c_untradableFirstDays = 30;
 
         public MfiRsiCandlePreciseTradingStrategy(IOptions<MfiRsiCandlePreciseTradingStrategyOptions> options,
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient)
@@ -65,6 +66,7 @@ namespace CryptoBlade.Strategies
             bool hasSellSignal = false;
             if (lastQuote != null)
             {
+                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > c_untradableFirstDays;
                 var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes);
                 var mfi = quotes.GetMfi();
                 var lastMfi = mfi.LastOrDefault();
@@ -75,8 +77,8 @@ namespace CryptoBlade.Strategies
                 bool hasMinSpread = spread5Min >= m_options.Value.MinimumPriceDistance;
                 var volume = TradeSignalHelpers.VolumeInQuoteCurrency(lastQuote);
                 bool hasMinVolume = volume > m_options.Value.MinimumVolume;
-                hasBuySignal = mfiRsiBuy && hasMinSpread && hasMinVolume;
-                hasSellSignal = mfiRsiSell && hasMinSpread && hasMinVolume;
+                hasBuySignal = mfiRsiBuy && hasMinSpread && hasMinVolume && canBeTraded;
+                hasSellSignal = mfiRsiSell && hasMinSpread && hasMinVolume && canBeTraded;
 
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.Volume1Min), volume));
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.MainTimeFrameVolume), volume));

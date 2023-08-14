@@ -172,6 +172,7 @@ namespace CryptoBlade.Mapping
                 MinOrderQty = symbol.LotSizeFilter?.MinOrderQuantity,
                 QtyStep = symbol.LotSizeFilter?.QuantityStep,
                 MaxLeverage = symbol.LeverageFilter?.MaxLeverage,
+                LaunchTime = symbol.LaunchTime,
             };
         }
 

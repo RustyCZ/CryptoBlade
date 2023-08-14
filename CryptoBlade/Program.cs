@@ -27,6 +27,13 @@ namespace CryptoBlade
             // Special readonly manager
             var builder = WebApplication.CreateBuilder(args);
             builder.Configuration.AddEnvironmentVariables("CB_");
+            var debugView = builder.Configuration.GetDebugView();
+            string[] debugViewLines = debugView.Split(Environment.NewLine)
+                .Where(x => !x.Contains("ApiKey", StringComparison.OrdinalIgnoreCase)
+                && !x.Contains("ApiSecret", StringComparison.OrdinalIgnoreCase))
+                .ToArray();
+            debugView = string.Join(Environment.NewLine, debugViewLines);
+
             var tradingBotOptions = builder.Configuration.GetSection("TradingBot").Get<TradingBotOptions>();
             TradingMode tradingMode = tradingBotOptions!.TradingMode;
             var exchangeAccount =
@@ -57,6 +64,8 @@ namespace CryptoBlade
             var app = builder.Build();
             var lf = app.Services.GetRequiredService<ILoggerFactory>();
             ApplicationLogging.LoggerFactory = lf;
+            var logger = ApplicationLogging.LoggerFactory.CreateLogger("Startup");
+            logger.LogInformation(debugView);
 
             if (!hasApiCredentials)
                 app.Logger.LogWarning("No API credentials found!.");

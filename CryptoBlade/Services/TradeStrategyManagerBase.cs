@@ -403,13 +403,19 @@ namespace CryptoBlade.Services
             var wallet = m_walletManager.Contract;
             decimal? totalWalletLongExposure = null;
             decimal? totalWalletShortExposure = null;
+            decimal? unrealizedPnlPercent = null;
             if (wallet.WalletBalance.HasValue && wallet.WalletBalance.Value > 0)
             {
                 totalWalletLongExposure = longExposure / wallet.WalletBalance;
                 totalWalletShortExposure = shortExposure / wallet.WalletBalance;
             }
 
-            return new StrategyState(longExposure, shortExposure, totalWalletLongExposure, totalWalletShortExposure);
+            if (wallet.WalletBalance.HasValue && wallet.WalletBalance.Value > 0 && wallet.UnrealizedPnl.HasValue)
+            {
+                unrealizedPnlPercent = wallet.UnrealizedPnl / wallet.WalletBalance;
+            }
+
+            return new StrategyState(longExposure, shortExposure, totalWalletLongExposure, totalWalletShortExposure, unrealizedPnlPercent);
         }
 
         protected abstract Task StrategyExecutionAsync(CancellationToken cancel);
@@ -462,12 +468,41 @@ namespace CryptoBlade.Services
             return Task.CompletedTask;
         }
 
+        protected Task PrepareStrategyUnstuckExecutionAsync(List<Task> strategyExecutionTasks,
+            string[] symbols,
+            Dictionary<string, ExecuteUnstuckParams> executionParams,
+            CancellationToken cancel)
+        {
+            foreach (var symbol in symbols)
+            {
+                if (!m_strategies.TryGetValue(symbol, out var strategy))
+                    continue;
+                Task strategyExecutionTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        executionParams.TryGetValue(symbol, out var execParam);
+                        await strategy.ExecuteUnstuckAsync(execParam.UnstuckLong, execParam.UnstuckShort, execParam.ForceUnstuckLong, execParam.ForceUnstuckShort, cancel);
+                    }
+                    catch (Exception e)
+                    {
+                        m_logger.LogError(e, "Error while executing strategy {Name} for symbol {Symbol}",
+                            strategy.Name, symbol);
+                    }
+                }, cancel);
+                strategyExecutionTasks.Add(strategyExecutionTask);
+            }
+            return Task.CompletedTask;
+        }
+
         protected readonly record struct StrategyState(
             decimal TotalLongExposure, 
             decimal TotalShortExposure, 
             decimal? TotalWalletLongExposure, 
-            decimal? TotalWalletShortExposure);
+            decimal? TotalWalletShortExposure,
+            decimal? UnrealizedPnlPercent);
 
         protected record struct ExecuteParams(bool AllowLongOpen, bool AllowShortOpen);
+        protected record struct ExecuteUnstuckParams(bool UnstuckLong, bool UnstuckShort, bool ForceUnstuckLong, bool ForceUnstuckShort);
     }
 }

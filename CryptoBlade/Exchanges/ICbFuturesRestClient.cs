@@ -40,12 +40,14 @@ namespace CryptoBlade.Exchanges
             string symbol,
             decimal qty,
             decimal price,
+            bool force,
             CancellationToken cancel = default);
 
         Task<bool> PlaceShortTakeProfitOrderAsync(
             string symbol,
             decimal qty,
             decimal price,
+            bool force,
             CancellationToken cancel = default);
 
         Task<Balance> GetBalancesAsync(CancellationToken cancel = default);

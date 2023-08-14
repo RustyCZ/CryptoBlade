@@ -257,7 +257,7 @@ namespace CryptoBlade.Exchanges
             return false;
         }
 
-        public async Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price,
+        public async Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force,
             CancellationToken cancel = default)
         {
             var sellOrderRes =
@@ -267,12 +267,12 @@ namespace CryptoBlade.Exchanges
                             category: m_category,
                             symbol: symbol,
                             side: OrderSide.Sell,
-                            type: NewOrderType.Limit,
+                            type: force ? NewOrderType.Market : NewOrderType.Limit,
                             quantity: qty,
                             price: price,
                             positionIdx: PositionIdx.BuyHedgeMode,
                             reduceOnly: true,
-                            timeInForce: TimeInForce.PostOnly,
+                            timeInForce: force ? TimeInForce.GoodTillCanceled : TimeInForce.PostOnly,
                             ct: cancel));
             if (sellOrderRes.GetResultOrError(out _, out var error))
                 return true;
@@ -280,7 +280,7 @@ namespace CryptoBlade.Exchanges
             return false;
         }
 
-        public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price,
+        public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force,
             CancellationToken cancel = default)
         {
             var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits.ExecuteAsync(async () =>
@@ -288,12 +288,12 @@ namespace CryptoBlade.Exchanges
                     category: m_category,
                     symbol: symbol,
                     side: OrderSide.Buy,
-                    type: NewOrderType.Limit,
+                    type: force ? NewOrderType.Market : NewOrderType.Limit,
                     quantity: qty,
                     price: price,
                     positionIdx: PositionIdx.SellHedgeMode,
                     reduceOnly: true,
-                    timeInForce: TimeInForce.PostOnly,
+                    timeInForce: force ? TimeInForce.GoodTillCanceled : TimeInForce.PostOnly,
                     ct: cancel));
             if (buyOrderRes.GetResultOrError(out _, out var error))
                 return true;

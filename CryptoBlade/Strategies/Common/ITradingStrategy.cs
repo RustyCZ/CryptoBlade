@@ -32,6 +32,10 @@ namespace CryptoBlade.Strategies.Common
 
         bool ConsistentData { get; }
 
+        decimal? UnrealizedLongPnlPercent { get; }
+
+        decimal? UnrealizedShortPnlPercent { get; }
+
         Ticker? Ticker { get; }
 
         DateTime LastTickerUpdate { get; }
@@ -49,6 +53,8 @@ namespace CryptoBlade.Strategies.Common
         Task InitializeAsync(Candle[] candles, Ticker ticker, CancellationToken cancel);
 
         Task ExecuteAsync(bool allowLongPositionOpen, bool allowShortPositionOpen, CancellationToken cancel);
+
+        Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, CancellationToken cancel);
 
         Task AddCandleDataAsync(Candle candle, CancellationToken cancel);
 

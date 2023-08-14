@@ -179,7 +179,7 @@ namespace CryptoBlade.BackTesting
             return true;
         }
 
-        public async Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price, CancellationToken cancel = default)
+        public async Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force, CancellationToken cancel = default)
         {
             Order order;
             using (await m_lock.LockAsync())
@@ -189,30 +189,54 @@ namespace CryptoBlade.BackTesting
                 var position = openPosition.Position;
                 if (position.Quantity < qty)
                     return false;
-                order = new Order
+                if (force)
                 {
-                    Symbol = symbol,
-                    AveragePrice = price,
-                    Status = OrderStatus.New,
-                    Side = OrderSide.Sell,
-                    Price = price,
-                    Quantity = qty,
-                    OrderId = Guid.NewGuid().ToString(),
-                    PositionMode = OrderPositionMode.BothSideBuy,
-                    QuantityFilled = 0,
-                    ValueFilled = 0,
-                    QuantityRemaining = qty,
-                    ReduceOnly = true,
-                    ValueRemaining = qty * price,
-                    CreateTime = m_currentTime,
-                };
-
-                if (!m_openOrders.TryGetValue(symbol, out var openOrders))
-                {
-                    openOrders = new HashSet<Order>();
-                    m_openOrders.Add(symbol, openOrders);
+                    order = new Order
+                    {
+                        Symbol = symbol,
+                        AveragePrice = price,
+                        Status = OrderStatus.Filled,
+                        Side = OrderSide.Sell,
+                        Price = price,
+                        Quantity = qty,
+                        OrderId = Guid.NewGuid().ToString(),
+                        PositionMode = OrderPositionMode.BothSideBuy,
+                        QuantityFilled = qty,
+                        ValueFilled = qty * price,
+                        QuantityRemaining = 0,
+                        ReduceOnly = true,
+                        ValueRemaining = 0,
+                        CreateTime = m_currentTime,
+                    };
+                    openPosition.AddOrder(order);
                 }
-                openOrders.Add(order);
+                else
+                {
+                    order = new Order
+                    {
+                        Symbol = symbol,
+                        AveragePrice = price,
+                        Status = OrderStatus.New,
+                        Side = OrderSide.Sell,
+                        Price = price,
+                        Quantity = qty,
+                        OrderId = Guid.NewGuid().ToString(),
+                        PositionMode = OrderPositionMode.BothSideBuy,
+                        QuantityFilled = 0,
+                        ValueFilled = 0,
+                        QuantityRemaining = qty,
+                        ReduceOnly = true,
+                        ValueRemaining = qty * price,
+                        CreateTime = m_currentTime,
+                    };
+
+                    if (!m_openOrders.TryGetValue(symbol, out var openOrders))
+                    {
+                        openOrders = new HashSet<Order>();
+                        m_openOrders.Add(symbol, openOrders);
+                    }
+                    openOrders.Add(order);
+                }
             }
 
             await NotifyOrderAsync(order);
@@ -220,7 +244,7 @@ namespace CryptoBlade.BackTesting
             return true;
         }
 
-        public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price, CancellationToken cancel = default)
+        public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force, CancellationToken cancel = default)
         {
             Order order;
             using (await m_lock.LockAsync())
@@ -230,29 +254,53 @@ namespace CryptoBlade.BackTesting
                 var position = openPosition.Position;
                 if (position.Quantity < qty)
                     return false;
-                order = new Order
+                if (force)
                 {
-                    Symbol = symbol,
-                    AveragePrice = price,
-                    Status = OrderStatus.New,
-                    Side = OrderSide.Buy,
-                    Price = price,
-                    Quantity = qty,
-                    OrderId = Guid.NewGuid().ToString(),
-                    PositionMode = OrderPositionMode.BothSideSell,
-                    QuantityFilled = 0,
-                    ValueFilled = 0,
-                    QuantityRemaining = qty,
-                    ReduceOnly = true,
-                    ValueRemaining = qty * price,
-                    CreateTime = m_currentTime,
-                };
-                if (!m_openOrders.TryGetValue(symbol, out var openOrders))
-                {
-                    openOrders = new HashSet<Order>();
-                    m_openOrders.Add(symbol, openOrders);
+                    order = new Order
+                    {
+                        Symbol = symbol,
+                        AveragePrice = price,
+                        Status = OrderStatus.Filled,
+                        Side = OrderSide.Buy,
+                        Price = price,
+                        Quantity = qty,
+                        OrderId = Guid.NewGuid().ToString(),
+                        PositionMode = OrderPositionMode.BothSideSell,
+                        QuantityFilled = qty,
+                        ValueFilled = qty * price,
+                        QuantityRemaining = 0,
+                        ReduceOnly = true,
+                        ValueRemaining = 0,
+                        CreateTime = m_currentTime,
+                    };
+                    openPosition.AddOrder(order);
                 }
-                openOrders.Add(order);
+                else
+                {
+                    order = new Order
+                    {
+                        Symbol = symbol,
+                        AveragePrice = price,
+                        Status = OrderStatus.New,
+                        Side = OrderSide.Buy,
+                        Price = price,
+                        Quantity = qty,
+                        OrderId = Guid.NewGuid().ToString(),
+                        PositionMode = OrderPositionMode.BothSideSell,
+                        QuantityFilled = 0,
+                        ValueFilled = 0,
+                        QuantityRemaining = qty,
+                        ReduceOnly = true,
+                        ValueRemaining = qty * price,
+                        CreateTime = m_currentTime,
+                    };
+                    if (!m_openOrders.TryGetValue(symbol, out var openOrders))
+                    {
+                        openOrders = new HashSet<Order>();
+                        m_openOrders.Add(symbol, openOrders);
+                    }
+                    openOrders.Add(order);
+                }
             }
 
             await NotifyOrderAsync(order);

@@ -67,6 +67,8 @@ namespace CryptoBlade.Strategies.Common
         public bool HasSellExtraSignal { get; protected set; }
         public bool HasBuyExtraSignal { get; protected set; }
         public bool ConsistentData { get; protected set; }
+        public decimal? UnrealizedLongPnlPercent { get; protected set; }
+        public decimal? UnrealizedShortPnlPercent { get; protected set; }
         public Ticker? Ticker { get; protected set; }
         public DateTime LastTickerUpdate { get; protected set; }
         public DateTime LastCandleUpdate { get; protected set; }
@@ -95,6 +97,21 @@ namespace CryptoBlade.Strategies.Common
             ShortPosition = shortPosition;
             IsInLongTrade = longPosition != null || BuyOrders.Length > 0;
             IsInShortTrade = shortPosition != null || SellOrders.Length > 0;
+            UnrealizedLongPnlPercent = null;
+            UnrealizedShortPnlPercent = null;
+            var balance = m_walletManager.Contract;
+            if (longPosition != null && Ticker != null && balance.WalletBalance.HasValue)
+            {
+                var longPositionValue = (Ticker.LastPrice - longPosition.AveragePrice) * longPosition.Quantity;
+                UnrealizedLongPnlPercent = longPositionValue / balance.WalletBalance.Value;
+            }
+
+            if (shortPosition != null && Ticker != null && balance.WalletBalance.HasValue)
+            {
+                var shortPositionValue = (shortPosition.AveragePrice - Ticker.LastPrice) * shortPosition.Quantity;
+                UnrealizedShortPnlPercent = shortPositionValue / balance.WalletBalance.Value;
+            }
+                
             m_logger.LogDebug(
                 $"{Name}: {Symbol} Long position: '{longPosition?.Quantity} @ {longPosition?.AveragePrice}' Short position: '{shortPosition?.Quantity} @ {shortPosition?.AveragePrice}' InTrade: '{IsInTrade}'");
             return Task.CompletedTask;
@@ -319,7 +336,7 @@ namespace CryptoBlade.Strategies.Common
                         await CancelOrderAsync(longTakeProfitOrder.OrderId, cancel);
                     }
                     m_logger.LogDebug($"{Name}: {Symbol} Placing long take profit order for '{longPosition.Quantity}' @ '{longTakeProfitPrice.Value}'");
-                    await PlaceLongTakeProfitOrderAsync(longPosition.Quantity, longTakeProfitPrice.Value, cancel);
+                    await PlaceLongTakeProfitOrderAsync(longPosition.Quantity, longTakeProfitPrice.Value, false, cancel);
                     NextLongProfitReplacement = utcNow + replacementTime;
                 }
             }
@@ -335,12 +352,77 @@ namespace CryptoBlade.Strategies.Common
                         await CancelOrderAsync(shortTakeProfitOrder.OrderId, cancel);
                     }
                     m_logger.LogDebug($"{Name}: {Symbol} Placing short take profit order for '{shortPosition.Quantity}' @ '{shortTakeProfitPrice.Value}'");
-                    await PlaceShortTakeProfitOrderAsync(shortPosition.Quantity, shortTakeProfitPrice.Value, cancel);
+                    await PlaceShortTakeProfitOrderAsync(shortPosition.Quantity, shortTakeProfitPrice.Value, false, cancel);
                     NextShortProfitReplacement = utcNow + replacementTime;
                 }
             }
 
             m_logger.LogDebug($"{Name}: {Symbol} Finished executing strategy. TradingMode: {m_options.Value.TradingMode}");
+        }
+
+        public async Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, CancellationToken cancel)
+        {
+            if (unstuckLong)
+            {
+                if (HasSellSignal || HasSellExtraSignal || forceUnstuckLong)
+                { 
+                    m_logger.LogDebug($"{Name}: {Symbol} Unstuck long position");
+                    await ExecuteLongUnstuckAsync(forceUnstuckLong, cancel);
+                }
+            }
+
+            if (unstuckShort)
+            {
+                if (HasBuySignal || HasBuyExtraSignal || forceUnstuckShort)
+                {
+                    m_logger.LogDebug($"{Name}: {Symbol} Unstuck short position");
+                    await ExecuteShortUnstuckAsync(forceUnstuckShort, cancel);
+                }
+            }
+        }
+
+        private async Task ExecuteLongUnstuckAsync(bool force, CancellationToken cancel)
+        {
+            var longPosition = LongPosition;
+            if (longPosition == null)
+                return;
+            var longTakeProfitOrders = LongTakeProfitOrders;
+            var ticker = Ticker;
+            if(ticker == null)
+                return;
+            var dynamicQtyLong = DynamicQtyLong;
+            if(dynamicQtyLong == null)
+                return;
+
+            foreach (Order longTakeProfitOrder in longTakeProfitOrders)
+            {
+                m_logger.LogDebug($"{Name}: {Symbol} Canceling long take profit order '{longTakeProfitOrder.OrderId}'");
+                await CancelOrderAsync(longTakeProfitOrder.OrderId, cancel);
+            }
+            
+            await PlaceLongTakeProfitOrderAsync(dynamicQtyLong.Value, ticker.BestAskPrice, force, cancel);
+        }
+
+        private async Task ExecuteShortUnstuckAsync(bool force, CancellationToken cancel)
+        {
+            var shortPosition = ShortPosition;
+            if (shortPosition == null)
+                return;
+            var shortTakeProfitOrders = ShortTakeProfitOrders;
+            var ticker = Ticker;
+            if (ticker == null)
+                return;
+            var dynamicQtyShort = DynamicQtyShort;
+            if (dynamicQtyShort == null)
+                return;
+
+            foreach (Order shortTakeProfitOrder in shortTakeProfitOrders)
+            {
+                m_logger.LogDebug($"{Name}: {Symbol} Canceling short take profit order '{shortTakeProfitOrder.OrderId}'");
+                await CancelOrderAsync(shortTakeProfitOrder.OrderId, cancel);
+            }
+
+            await PlaceShortTakeProfitOrderAsync(dynamicQtyShort.Value, ticker.BestBidPrice, force, cancel);
         }
 
         public async Task AddCandleDataAsync(Candle candle, CancellationToken cancel)
@@ -381,7 +463,12 @@ namespace CryptoBlade.Strategies.Common
             var ticker = Ticker;
             if (ticker == null)
                 return;
-            RecommendedMinBalance = SymbolInfo.CalculateMinBalance(ticker.BestAskPrice, Math.Min(WalletExposureLong, WalletExposureShort), DcaOrdersCount);
+            
+            var minExposure = Math.Min(WalletExposureLong, WalletExposureShort);
+            if (minExposure == 0)
+                minExposure = Math.Max(WalletExposureLong, WalletExposureShort);
+
+            RecommendedMinBalance = SymbolInfo.CalculateMinBalance(ticker.BestAskPrice, minExposure, DcaOrdersCount);
 
             if (!DynamicQtyShort.HasValue || !IsInTrade)
                 DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
@@ -476,14 +563,14 @@ namespace CryptoBlade.Strategies.Common
                 LastCandleShortOrder = candleTime;
         }
 
-        private async Task PlaceLongTakeProfitOrderAsync(decimal qty, decimal price, CancellationToken cancel)
+        private async Task PlaceLongTakeProfitOrderAsync(decimal qty, decimal price, bool force, CancellationToken cancel)
         {
-            await m_cbFuturesRestClient.PlaceLongTakeProfitOrderAsync(Symbol, qty, price, cancel);
+            await m_cbFuturesRestClient.PlaceLongTakeProfitOrderAsync(Symbol, qty, price, force, cancel);
         }
 
-        private async Task PlaceShortTakeProfitOrderAsync(decimal qty, decimal price, CancellationToken cancel)
+        private async Task PlaceShortTakeProfitOrderAsync(decimal qty, decimal price, bool force, CancellationToken cancel)
         {
-            await m_cbFuturesRestClient.PlaceShortTakeProfitOrderAsync(Symbol, qty, price, cancel);
+            await m_cbFuturesRestClient.PlaceShortTakeProfitOrderAsync(Symbol, qty, price, force, cancel);
         }
 
         private bool NoPositionIncreaseOrderForCandle(Quote candle, DateTime? lastTrade)

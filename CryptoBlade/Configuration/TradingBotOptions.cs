@@ -22,5 +22,6 @@
         public decimal FeeRate { get; set; } = 0.0002m;
         public decimal MinProfitRate { get; set; } = 0.0006m;
         public BackTest BackTest { get; set; } = new BackTest();
+        public Unstucking Unstucking { get; set; } = new Unstucking();
     }
 }

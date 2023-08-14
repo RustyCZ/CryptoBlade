@@ -14,6 +14,8 @@ namespace CryptoBlade.Helpers
         {
             if (price == 0)
                 return null;
+            if (walletExposure == 0)
+                return null;
             decimal? walletBalance = walletManager.Contract.WalletBalance;
             if (!walletBalance.HasValue)
                 return null;
@@ -36,6 +38,8 @@ namespace CryptoBlade.Helpers
             if (!symbolInfo.MaxLeverage.HasValue)
                 return null;
             if (!symbolInfo.QtyStep.HasValue)
+                return null;
+            if (walletExposure == 0)
                 return null;
             decimal minBalance =
                 symbolInfo.QtyStep.Value * dcaMultiplier * (100.0m / symbolInfo.MaxLeverage.Value) * price /

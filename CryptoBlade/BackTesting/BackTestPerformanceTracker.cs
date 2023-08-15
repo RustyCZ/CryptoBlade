@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
@@ -21,8 +22,10 @@ namespace CryptoBlade.BackTesting
         private readonly string m_testId;
         private readonly IHostApplicationLifetime m_applicationLifetime;
         private readonly ILogger<BackTestPerformanceTracker> m_logger;
+        private readonly IOptions<TradingBotOptions> m_tradingBotOptions;
 
         public BackTestPerformanceTracker(IOptions<BackTestPerformanceTrackerOptions> options,
+            IOptions<TradingBotOptions> tradingBotOptions,
             BackTestExchange backTestExchange, 
             IHostApplicationLifetime applicationLifetime, 
             ILogger<BackTestPerformanceTracker> logger)
@@ -34,7 +37,8 @@ namespace CryptoBlade.BackTesting
             m_logger = logger;
             m_options = options;
             m_lock = new AsyncLock();
-            m_testId= $"{DateTime.Now:yyyyMMddHHmm}-{Guid.NewGuid().ToString("N")}";
+            m_tradingBotOptions = tradingBotOptions;
+            m_testId = $"{DateTime.Now:yyyyMMddHHmm}-{Guid.NewGuid().ToString("N")}";
         }
 
         public async Task StartAsync(CancellationToken cancellationToken)
@@ -119,16 +123,19 @@ namespace CryptoBlade.BackTesting
             };
             var directory = Path.Combine(m_options.Value.BackTestsDirectory, m_testId);
             Directory.CreateDirectory(directory);
-            string filePath = Path.Combine(directory, "result.json");
+            string filePath = Path.Combine(directory, m_tradingBotOptions.Value.BackTest.ResultFileName);
 
             string json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePath, json);
 
-            string filePathDetailed = Path.Combine(directory, "result_detailed.json");
+            string filePathDetailed = Path.Combine(directory, m_tradingBotOptions.Value.BackTest.ResultDetailedFileName);
             var openPositions = await m_backTestExchange.GetOpenPositionsWithOrdersAsync();
             result.OpenPositionWithOrders = openPositions;
             json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePathDetailed, json);
+
+            var botSettings = JsonSerializer.Serialize(m_tradingBotOptions.Value, new JsonSerializerOptions { WriteIndented = true });
+            await File.WriteAllTextAsync(Path.Combine(directory, "appsettings.json"), botSettings);
         }
 
         private void PlotBalanceAndEquity()

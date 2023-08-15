@@ -11,5 +11,9 @@
         public TimeSpan StartupCandleData { get; set; } = TimeSpan.FromDays(1);
 
         public bool OptimisticFill { get; set; } = true;
+
+        public string ResultFileName { get; set; } = "result.json";
+
+        public string ResultDetailedFileName { get; set; } = "result_detailed.json";
     }
 }

@@ -76,7 +76,7 @@ namespace CryptoBlade.Strategies
                 ForceMinQty = config.ForceMinQty,
                 TradingMode = GetTradingMode(config, symbol),
                 MaxAbsFundingRate = config.MaxAbsFundingRate,
-                FeeRate = config.FeeRate,
+                FeeRate = config.MakerFeeRate,
                 MinProfitRate = config.MinProfitRate,
             };
             optionsSetup(options);

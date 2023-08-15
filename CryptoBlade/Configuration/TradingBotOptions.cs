@@ -19,7 +19,8 @@
         public bool ForceMinQty { get; set; } = true;
         public int PlaceOrderAttempts { get; set; } = 3;
         public decimal MaxAbsFundingRate { get; set; } = 0.0004m;
-        public decimal FeeRate { get; set; } = 0.0002m;
+        public decimal MakerFeeRate { get; set; } = 0.0002m;
+        public decimal TakerFeeRate { get; set; } = 0.00055m;
         public decimal MinProfitRate { get; set; } = 0.0006m;
         public BackTest BackTest { get; set; } = new BackTest();
         public Unstucking Unstucking { get; set; } = new Unstucking();

@@ -114,7 +114,8 @@ namespace CryptoBlade
                 x.InitialBalance = tradingBotOptions.BackTest.InitialBalance;
                 x.StartupCandleData = tradingBotOptions.BackTest.StartupCandleData;
                 x.Symbols = tradingBotOptions.Whitelist;
-                x.FeeRate = tradingBotOptions.FeeRate;
+                x.MakerFeeRate = tradingBotOptions.MakerFeeRate;
+                x.TakerFeeRate = tradingBotOptions.TakerFeeRate;
             });
             builder.Services.AddSingleton<IBackTestDataDownloader, BackTestDataDownloader>();
             builder.Services.AddSingleton<IHistoricalDataDownloader>(provider =>

@@ -12,6 +12,8 @@
 
         public decimal InitialBalance { get; set; } = 5000;
 
-        public decimal FeeRate { get; set; } = 0.0002m;
+        public decimal MakerFeeRate { get; set; } = 0.0002m;
+
+        public decimal TakerFeeRate { get; set; } = 0.00055m;
     }
 }

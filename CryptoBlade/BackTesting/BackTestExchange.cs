@@ -118,7 +118,7 @@ namespace CryptoBlade.BackTesting
                     ValueRemaining = 0,
                     CreateTime = m_currentTime,
                 };
-                decimal fee = quantity * price * m_options.Value.FeeRate;
+                decimal fee = quantity * price * m_options.Value.MakerFeeRate;
                 await AddFeeToBalanceAsync(-fee);
                 if (!m_longPositions.TryGetValue(symbol, out var openPosition))
                 {
@@ -161,7 +161,7 @@ namespace CryptoBlade.BackTesting
                     ValueRemaining = 0,
                     CreateTime = m_currentTime,
                 };
-                decimal fee = quantity * price * m_options.Value.FeeRate;
+                decimal fee = quantity * price * m_options.Value.MakerFeeRate;
                 await AddFeeToBalanceAsync(-fee);
                 if (!m_shortPositions.TryGetValue(symbol, out var openPosition))
                 {
@@ -211,7 +211,7 @@ namespace CryptoBlade.BackTesting
                     openPosition.AddOrder(order);
                     var profitOrLoss = (order.Price!.Value - position.AveragePrice) * order.Quantity;
                     await UpdateBalanceAsync(profitOrLoss);
-                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.FeeRate;
+                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.TakerFeeRate;
                     await AddFeeToBalanceAsync(-fee);
                 }
                 else
@@ -280,7 +280,7 @@ namespace CryptoBlade.BackTesting
                     openPosition.AddOrder(order);
                     var profitOrLoss = (position.AveragePrice - order.Price!.Value) * order.Quantity;
                     await UpdateBalanceAsync(profitOrLoss);
-                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.FeeRate;
+                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.TakerFeeRate;
                     await AddFeeToBalanceAsync(-fee);
                 }
                 else
@@ -586,7 +586,7 @@ namespace CryptoBlade.BackTesting
                             m_shortPositions.Remove(symbol);
                         }
 
-                        decimal fee = filledOrder.Price!.Value * filledOrder.Quantity * m_options.Value.FeeRate;
+                        decimal fee = filledOrder.Price!.Value * filledOrder.Quantity * m_options.Value.MakerFeeRate;
                         await AddFeeToBalanceAsync(-fee);
                     }
                 }

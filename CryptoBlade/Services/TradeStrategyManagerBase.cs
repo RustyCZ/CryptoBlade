@@ -482,7 +482,12 @@ namespace CryptoBlade.Services
                     try
                     {
                         executionParams.TryGetValue(symbol, out var execParam);
-                        await strategy.ExecuteUnstuckAsync(execParam.UnstuckLong, execParam.UnstuckShort, execParam.ForceUnstuckLong, execParam.ForceUnstuckShort, cancel);
+                        await strategy.ExecuteUnstuckAsync(execParam.UnstuckLong, 
+                            execParam.UnstuckShort, 
+                            execParam.ForceUnstuckLong, 
+                            execParam.ForceUnstuckShort, 
+                            execParam.ForceKill,
+                            cancel);
                     }
                     catch (Exception e)
                     {
@@ -503,6 +508,6 @@ namespace CryptoBlade.Services
             decimal? UnrealizedPnlPercent);
 
         protected record struct ExecuteParams(bool AllowLongOpen, bool AllowShortOpen);
-        protected record struct ExecuteUnstuckParams(bool UnstuckLong, bool UnstuckShort, bool ForceUnstuckLong, bool ForceUnstuckShort);
+        protected record struct ExecuteUnstuckParams(bool UnstuckLong, bool UnstuckShort, bool ForceUnstuckLong, bool ForceUnstuckShort, bool ForceKill);
     }
 }

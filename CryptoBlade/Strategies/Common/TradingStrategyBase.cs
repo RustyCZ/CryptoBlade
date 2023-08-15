@@ -362,14 +362,14 @@ namespace CryptoBlade.Strategies.Common
             m_logger.LogDebug($"{Name}: {Symbol} Finished executing strategy. TradingMode: {m_options.Value.TradingMode}");
         }
 
-        public async Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, CancellationToken cancel)
+        public async Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, bool forceKill, CancellationToken cancel)
         {
             if (unstuckLong)
             {
                 if (HasSellSignal || HasSellExtraSignal || forceUnstuckLong)
                 { 
                     m_logger.LogDebug($"{Name}: {Symbol} Unstuck long position");
-                    await ExecuteLongUnstuckAsync(forceUnstuckLong, cancel);
+                    await ExecuteLongUnstuckAsync(forceUnstuckLong, forceKill, cancel);
                 }
             }
 
@@ -378,12 +378,12 @@ namespace CryptoBlade.Strategies.Common
                 if (HasBuySignal || HasBuyExtraSignal || forceUnstuckShort)
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} Unstuck short position");
-                    await ExecuteShortUnstuckAsync(forceUnstuckShort, cancel);
+                    await ExecuteShortUnstuckAsync(forceUnstuckShort, forceKill, cancel);
                 }
             }
         }
 
-        private async Task ExecuteLongUnstuckAsync(bool force, CancellationToken cancel)
+        private async Task ExecuteLongUnstuckAsync(bool force, bool forceKill, CancellationToken cancel)
         {
             var longPosition = LongPosition;
             if (longPosition == null)
@@ -396,7 +396,9 @@ namespace CryptoBlade.Strategies.Common
             if(dynamicQtyLong == null)
                 return;
 
-            decimal unstuckQuantity = CalculateUnstuckingQuantity(longPosition.Quantity, force, dynamicQtyLong.Value);
+            decimal unstuckQuantity = forceKill
+                ? longPosition.Quantity
+                : CalculateUnstuckingQuantity(longPosition.Quantity, force, dynamicQtyLong.Value);
 
             foreach (Order longTakeProfitOrder in longTakeProfitOrders)
             {
@@ -407,7 +409,7 @@ namespace CryptoBlade.Strategies.Common
             await PlaceLongTakeProfitOrderAsync(unstuckQuantity, ticker.BestAskPrice, force, cancel);
         }
 
-        private async Task ExecuteShortUnstuckAsync(bool force, CancellationToken cancel)
+        private async Task ExecuteShortUnstuckAsync(bool force, bool forceKill, CancellationToken cancel)
         {
             var shortPosition = ShortPosition;
             if (shortPosition == null)
@@ -420,7 +422,9 @@ namespace CryptoBlade.Strategies.Common
             if (dynamicQtyShort == null)
                 return;
 
-            decimal unstuckQuantity = CalculateUnstuckingQuantity(shortPosition.Quantity, force, dynamicQtyShort.Value);
+            decimal unstuckQuantity = forceKill 
+                ? shortPosition.Quantity 
+                : CalculateUnstuckingQuantity(shortPosition.Quantity, force, dynamicQtyShort.Value);
 
             foreach (Order shortTakeProfitOrder in shortTakeProfitOrders)
             {

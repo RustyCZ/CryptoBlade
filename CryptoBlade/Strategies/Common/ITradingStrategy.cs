@@ -54,7 +54,7 @@ namespace CryptoBlade.Strategies.Common
 
         Task ExecuteAsync(bool allowLongPositionOpen, bool allowShortPositionOpen, CancellationToken cancel);
 
-        Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, CancellationToken cancel);
+        Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, bool forceKill, CancellationToken cancel);
 
         Task AddCandleDataAsync(Candle candle, CancellationToken cancel);
 

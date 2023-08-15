@@ -9,5 +9,6 @@
         public decimal ForceUnstuckPositionThresholdPercent { get; set; } = -0.005m;
         public decimal SlowUnstuckPercentStep { get; set; } = 0.05m;
         public decimal ForceUnstuckPercentStep { get; set; } = 0.1m;
+        public bool ForceKillTheWorst { get; set; } = false;
     }
 }

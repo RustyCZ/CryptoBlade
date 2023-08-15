@@ -53,24 +53,60 @@ namespace CryptoBlade.Services
             if (strategyState.UnrealizedPnlPercent.HasValue &&
                 strategyState.UnrealizedPnlPercent.Value < unstucking.ForceUnstuckThresholdPercent)
             {
-                var strategiesWithShortLoss = Strategies.Values
-                    .Where(x => x.IsInTrade && x.UnrealizedShortPnlPercent.HasValue &&
-                                x.UnrealizedShortPnlPercent.Value < unstucking.ForceUnstuckPositionThresholdPercent)
-                    .Select(x => x.Symbol);
-                foreach (string s in strategiesWithShortLoss)
+                if (m_options.Value.Unstucking.ForceKillTheWorst)
                 {
-                    executeUnstuckParams.TryGetValue(s, out var unstuckArgs);
-                    executeUnstuckParams[s] = unstuckArgs with { UnstuckShort = true, ForceUnstuckShort = true };
-                }
+                    var worstShort = Strategies.Values
+                        .Where(x => x.IsInTrade && x.UnrealizedShortPnlPercent.HasValue &&
+                                    x.UnrealizedShortPnlPercent.Value < unstucking.ForceUnstuckPositionThresholdPercent)
+                        .MinBy(x => x.UnrealizedShortPnlPercent);
+                    var worstLong = Strategies.Values
+                        .Where(x => x.IsInTrade && x.UnrealizedLongPnlPercent.HasValue && 
+                                    x.UnrealizedLongPnlPercent.Value < unstucking.ForceUnstuckPositionThresholdPercent)
+                        .MinBy(x => x.UnrealizedLongPnlPercent);
+                    ITradingStrategy? worst = null;
+                    if (worstShort != null)
+                        worst = worstShort;
+                    if (worstLong != null)
+                    {
+                        if(worst == null)
+                            worst = worstLong;
+                        else if (worstLong.UnrealizedLongPnlPercent < worst.UnrealizedShortPnlPercent)
+                            worst = worstLong;
+                    }
 
-                var strategiesWithLongLoss = Strategies.Values
-                    .Where(x => x.IsInTrade && x.UnrealizedLongPnlPercent.HasValue &&
-                                x.UnrealizedLongPnlPercent.Value < unstucking.ForceUnstuckPositionThresholdPercent)
-                    .Select(x => x.Symbol);
-                foreach (string s in strategiesWithLongLoss)
+                    if (worst != null)
+                    {
+                        executeUnstuckParams[worst.Symbol] = new ExecuteUnstuckParams
+                        {
+                            UnstuckShort = worstShort != null,
+                            UnstuckLong = worstLong != null,
+                            ForceUnstuckShort = worstShort != null,
+                            ForceUnstuckLong = worstLong != null,
+                            ForceKill = true,
+                        };
+                    }
+                }
+                else
                 {
-                    executeUnstuckParams.TryGetValue(s, out var unstuckArgs);
-                    executeUnstuckParams[s] = unstuckArgs with { UnstuckLong = true, ForceUnstuckLong = true };
+                    var strategiesWithShortLoss = Strategies.Values
+                        .Where(x => x.IsInTrade && x.UnrealizedShortPnlPercent.HasValue &&
+                                    x.UnrealizedShortPnlPercent.Value < unstucking.ForceUnstuckPositionThresholdPercent)
+                        .Select(x => x.Symbol);
+                    foreach (string s in strategiesWithShortLoss)
+                    {
+                        executeUnstuckParams.TryGetValue(s, out var unstuckArgs);
+                        executeUnstuckParams[s] = unstuckArgs with { UnstuckShort = true, ForceUnstuckShort = true };
+                    }
+
+                    var strategiesWithLongLoss = Strategies.Values
+                        .Where(x => x.IsInTrade && x.UnrealizedLongPnlPercent.HasValue &&
+                                    x.UnrealizedLongPnlPercent.Value < unstucking.ForceUnstuckPositionThresholdPercent)
+                        .Select(x => x.Symbol);
+                    foreach (string s in strategiesWithLongLoss)
+                    {
+                        executeUnstuckParams.TryGetValue(s, out var unstuckArgs);
+                        executeUnstuckParams[s] = unstuckArgs with { UnstuckLong = true, ForceUnstuckLong = true };
+                    }
                 }
             }
             else if (strategyState.UnrealizedPnlPercent.HasValue &&
@@ -129,13 +165,6 @@ namespace CryptoBlade.Services
                 {
                     try
                     {
-                        // TODO unstuck strategy
-                        // at 30% unrealized profit select strategy that have worst unrealized profit and have signal on that position
-                        // at 50% unrealized profit - start unstucking everything
-                        // for long position - there should be sell signal
-                        // for short position - there should be buy signal
-                        // strategies that are unstucking should not place order
-
                         await ProcessStrategyDataAsync(cancel);
 
                         var hasInconsistent = Strategies.Values.Any(x => !x.ConsistentData);

@@ -15,5 +15,7 @@
         public decimal MakerFeeRate { get; set; } = 0.0002m;
 
         public decimal TakerFeeRate { get; set; } = 0.00055m;
+
+        public bool OptimisticFill { get; set; } = true;
     }
 }

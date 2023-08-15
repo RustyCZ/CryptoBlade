@@ -116,6 +116,7 @@ namespace CryptoBlade
                 x.Symbols = tradingBotOptions.Whitelist;
                 x.MakerFeeRate = tradingBotOptions.MakerFeeRate;
                 x.TakerFeeRate = tradingBotOptions.TakerFeeRate;
+                x.OptimisticFill = tradingBotOptions.BackTest.OptimisticFill;
             });
             builder.Services.AddSingleton<IBackTestDataDownloader, BackTestDataDownloader>();
             builder.Services.AddSingleton<IHistoricalDataDownloader>(provider =>

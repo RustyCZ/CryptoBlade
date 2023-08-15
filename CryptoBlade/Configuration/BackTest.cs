@@ -9,5 +9,7 @@
         public decimal InitialBalance { get; set; } = 5000;
 
         public TimeSpan StartupCandleData { get; set; } = TimeSpan.FromDays(1);
+
+        public bool OptimisticFill { get; set; } = true;
     }
 }

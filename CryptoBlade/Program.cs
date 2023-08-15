@@ -1,3 +1,4 @@
+using System.Reflection;
 using Bybit.Net;
 using CryptoBlade.BackTesting;
 using CryptoBlade.Configuration;
@@ -65,6 +66,9 @@ namespace CryptoBlade
             var lf = app.Services.GetRequiredService<ILoggerFactory>();
             ApplicationLogging.LoggerFactory = lf;
             var logger = ApplicationLogging.LoggerFactory.CreateLogger("Startup");
+            var assembly = Assembly.GetExecutingAssembly();
+            var version = assembly.GetName().Version;
+            logger.LogInformation($"CryptoBlade v{version}");
             logger.LogInformation(debugView);
 
             if (!hasApiCredentials)

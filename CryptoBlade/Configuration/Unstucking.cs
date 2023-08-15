@@ -7,5 +7,7 @@
         public decimal SlowUnstuckPositionThresholdPercent { get; set; } = -0.01m;
         public decimal ForceUnstuckThresholdPercent { get; set; } = -0.3m;
         public decimal ForceUnstuckPositionThresholdPercent { get; set; } = -0.005m;
+        public decimal SlowUnstuckPercentStep { get; set; } = 0.05m;
+        public decimal ForceUnstuckPercentStep { get; set; } = 0.1m;
     }
 }

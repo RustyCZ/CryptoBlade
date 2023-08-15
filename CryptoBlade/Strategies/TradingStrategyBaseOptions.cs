@@ -19,5 +19,9 @@ namespace CryptoBlade.Strategies
         public decimal FeeRate { get; set; } = 0.0002m;
 
         public decimal MinProfitRate { get; set; } = 0.0006m;
+
+        public decimal SlowUnstuckPercentStep { get; set; } = 0.05m;
+
+        public decimal ForceUnstuckPercentStep { get; set; } = 0.1m;
     }
 }

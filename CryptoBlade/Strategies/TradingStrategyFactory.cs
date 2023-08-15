@@ -78,6 +78,8 @@ namespace CryptoBlade.Strategies
                 MaxAbsFundingRate = config.MaxAbsFundingRate,
                 FeeRate = config.MakerFeeRate,
                 MinProfitRate = config.MinProfitRate,
+                ForceUnstuckPercentStep = config.Unstucking.ForceUnstuckPercentStep,
+                SlowUnstuckPercentStep = config.Unstucking.SlowUnstuckPercentStep,
             };
             optionsSetup(options);
             return Options.Create(options);

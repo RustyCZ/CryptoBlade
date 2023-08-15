@@ -396,13 +396,15 @@ namespace CryptoBlade.Strategies.Common
             if(dynamicQtyLong == null)
                 return;
 
+            decimal unstuckQuantity = CalculateUnstuckingQuantity(longPosition.Quantity, force, dynamicQtyLong.Value);
+
             foreach (Order longTakeProfitOrder in longTakeProfitOrders)
             {
                 m_logger.LogDebug($"{Name}: {Symbol} Canceling long take profit order '{longTakeProfitOrder.OrderId}'");
                 await CancelOrderAsync(longTakeProfitOrder.OrderId, cancel);
             }
             
-            await PlaceLongTakeProfitOrderAsync(dynamicQtyLong.Value, ticker.BestAskPrice, force, cancel);
+            await PlaceLongTakeProfitOrderAsync(unstuckQuantity, ticker.BestAskPrice, force, cancel);
         }
 
         private async Task ExecuteShortUnstuckAsync(bool force, CancellationToken cancel)
@@ -418,13 +420,35 @@ namespace CryptoBlade.Strategies.Common
             if (dynamicQtyShort == null)
                 return;
 
+            decimal unstuckQuantity = CalculateUnstuckingQuantity(shortPosition.Quantity, force, dynamicQtyShort.Value);
+
             foreach (Order shortTakeProfitOrder in shortTakeProfitOrders)
             {
                 m_logger.LogDebug($"{Name}: {Symbol} Canceling short take profit order '{shortTakeProfitOrder.OrderId}'");
                 await CancelOrderAsync(shortTakeProfitOrder.OrderId, cancel);
             }
 
-            await PlaceShortTakeProfitOrderAsync(dynamicQtyShort.Value, ticker.BestBidPrice, force, cancel);
+            await PlaceShortTakeProfitOrderAsync(unstuckQuantity, ticker.BestBidPrice, force, cancel);
+        }
+
+        private decimal CalculateUnstuckingQuantity(decimal positionQuantity, bool force, decimal dynamicQuantity)
+        {
+            if (!SymbolInfo.QtyStep.HasValue)
+                return dynamicQuantity;
+
+            decimal unstuckQuantity;
+            if (force)
+                unstuckQuantity = positionQuantity * m_options.Value.ForceUnstuckPercentStep;
+            else
+                unstuckQuantity = positionQuantity * m_options.Value.SlowUnstuckPercentStep;
+
+            unstuckQuantity -= (unstuckQuantity % SymbolInfo.QtyStep.Value);
+            if (unstuckQuantity < dynamicQuantity)
+                unstuckQuantity = dynamicQuantity;
+            if(unstuckQuantity > positionQuantity)
+                unstuckQuantity = positionQuantity;
+
+            return unstuckQuantity;
         }
 
         public async Task AddCandleDataAsync(Candle candle, CancellationToken cancel)

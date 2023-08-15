@@ -209,6 +209,10 @@ namespace CryptoBlade.BackTesting
                         CreateTime = m_currentTime,
                     };
                     openPosition.AddOrder(order);
+                    var profitOrLoss = (order.Price!.Value - position.AveragePrice) * order.Quantity;
+                    await UpdateBalanceAsync(profitOrLoss);
+                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.FeeRate;
+                    await AddFeeToBalanceAsync(-fee);
                 }
                 else
                 {
@@ -274,6 +278,10 @@ namespace CryptoBlade.BackTesting
                         CreateTime = m_currentTime,
                     };
                     openPosition.AddOrder(order);
+                    var profitOrLoss = (position.AveragePrice - order.Price!.Value) * order.Quantity;
+                    await UpdateBalanceAsync(profitOrLoss);
+                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.FeeRate;
+                    await AddFeeToBalanceAsync(-fee);
                 }
                 else
                 {

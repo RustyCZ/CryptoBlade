@@ -37,7 +37,7 @@ namespace CryptoBlade.Tests.BackTesting
                 Symbols = symbols,
             });
 
-            var options = Options.Create(new HistoricalTradesStorageOptions
+            var options = Options.Create(new ProtoHistoricalDataStorageOptions
             {
                 Directory = "HistoricalData",
             });
@@ -49,7 +49,7 @@ namespace CryptoBlade.Tests.BackTesting
             var cbRestClient = new BybitCbFuturesRestClient(cbRestClientOptions,
                 bybit,
                 ApplicationLogging.CreateLogger<BybitCbFuturesRestClient>());
-            using var storage = new HistoricalDataStorage(options);
+            var storage = new ProtoHistoricalDataStorage(options);
             var downloader = new BybitHistoricalDataDownloader(
                 storage,
                 ApplicationLogging.CreateLogger<BybitHistoricalDataDownloader>(),

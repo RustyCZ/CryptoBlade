@@ -30,11 +30,11 @@ namespace CryptoBlade.Tests.BackTesting.Bybit
         [Fact]
         public async Task WhenSolTradesAreDownloadedTheyShouldBeStored()
         {
-            var options = Options.Create(new HistoricalTradesStorageOptions
+            var options = Options.Create(new ProtoHistoricalDataStorageOptions
             {
                 Directory = "HistoricalData",
             });
-            using var storage = new HistoricalDataStorage(options);
+            var storage = new ProtoHistoricalDataStorage(options);
             var bybit = new BybitRestClient();
             var cbRestClientOptions = Options.Create(new BybitCbFuturesRestClientOptions
             {

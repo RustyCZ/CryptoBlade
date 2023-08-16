@@ -86,6 +86,8 @@ namespace CryptoBlade.Strategies.Common
         public DateTime? NextLongProfitReplacement { get; set; }
         public DateTime? LastCandleLongOrder { get; set; }
         public DateTime? LastCandleShortOrder { get; set; }
+        public DateTime? LastCandleLongUnstuckOrder { get; set; }
+        public DateTime? LastCandleShortUnstuckOrder { get; set; }
 
         public Task UpdateTradingStateAsync(Position? longPosition, Position? shortPosition, Order[] orders, CancellationToken cancel)
         {
@@ -272,7 +274,7 @@ namespace CryptoBlade.Strategies.Common
                 if (hasBuySignal
                     && longPosition == null 
                     && !buyOrders.Any() 
-                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleLongOrder)
+                    && NoTradeForCandle(lastPrimaryQuote, LastCandleLongOrder)
                     && dynamicQtyLong.HasValue
                     && canOpenLongPosition
                     && LongFundingWithinLimit(ticker))
@@ -284,7 +286,7 @@ namespace CryptoBlade.Strategies.Common
                 if (hasSellSignal 
                     && shortPosition == null 
                     && !sellOrders.Any() 
-                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleShortOrder)
+                    && NoTradeForCandle(lastPrimaryQuote, LastCandleShortOrder)
                     && dynamicQtyShort.HasValue
                     && canOpenShortPosition
                     && ShortFundingWithinLimit(ticker))
@@ -300,7 +302,7 @@ namespace CryptoBlade.Strategies.Common
                     && walletLongExposure.HasValue && walletLongExposure.Value < m_options.Value.WalletExposureLong
                     && !buyOrders.Any()
                     && dynamicQtyLong.HasValue
-                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleLongOrder)
+                    && NoTradeForCandle(lastPrimaryQuote, LastCandleLongOrder)
                     && LongFundingWithinLimit(ticker))
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open long position");
@@ -314,7 +316,7 @@ namespace CryptoBlade.Strategies.Common
                     && walletShortExposure.HasValue && walletShortExposure.Value < m_options.Value.WalletExposureShort
                     && !sellOrders.Any()
                     && dynamicQtyShort.HasValue
-                    && NoPositionIncreaseOrderForCandle(lastPrimaryQuote, LastCandleShortOrder)
+                    && NoTradeForCandle(lastPrimaryQuote, LastCandleShortOrder)
                     && ShortFundingWithinLimit(ticker))
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open short position");
@@ -364,37 +366,49 @@ namespace CryptoBlade.Strategies.Common
 
         public async Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, bool forceKill, CancellationToken cancel)
         {
+            var primary = RequiredTimeFrameWindows.First(x => x.Primary).TimeFrame;
+            var lastPrimaryQuote = QuoteQueues[primary].GetQuotes().LastOrDefault();
+            if(lastPrimaryQuote == null)
+                return;
             if (unstuckLong)
             {
-                if (HasSellSignal || HasSellExtraSignal || forceUnstuckLong)
+                bool noTradeForCandle = NoTradeForCandle(lastPrimaryQuote, LastCandleLongUnstuckOrder);
+                bool regularUnstuck = noTradeForCandle && (HasSellSignal || HasSellExtraSignal);
+                if (regularUnstuck || forceUnstuckLong)
                 { 
                     m_logger.LogDebug($"{Name}: {Symbol} Unstuck long position");
-                    await ExecuteLongUnstuckAsync(forceUnstuckLong, forceKill, cancel);
+                    var orderPlaced = await ExecuteLongUnstuckAsync(forceUnstuckLong, forceKill, cancel);
+                    if(orderPlaced)
+                        LastCandleLongUnstuckOrder = lastPrimaryQuote.Date;
                 }
             }
 
             if (unstuckShort)
             {
-                if (HasBuySignal || HasBuyExtraSignal || forceUnstuckShort)
+                bool noTradeForCandle = NoTradeForCandle(lastPrimaryQuote, LastCandleShortUnstuckOrder);
+                bool regularUnstuck = noTradeForCandle && (HasBuySignal || HasBuyExtraSignal);
+                if (regularUnstuck || forceUnstuckShort)
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} Unstuck short position");
-                    await ExecuteShortUnstuckAsync(forceUnstuckShort, forceKill, cancel);
+                    var orderPlaced = await ExecuteShortUnstuckAsync(forceUnstuckShort, forceKill, cancel);
+                    if(orderPlaced)
+                        LastCandleShortUnstuckOrder = lastPrimaryQuote.Date;
                 }
             }
         }
 
-        private async Task ExecuteLongUnstuckAsync(bool force, bool forceKill, CancellationToken cancel)
+        private async Task<bool> ExecuteLongUnstuckAsync(bool force, bool forceKill, CancellationToken cancel)
         {
             var longPosition = LongPosition;
             if (longPosition == null)
-                return;
+                return false;
             var longTakeProfitOrders = LongTakeProfitOrders;
             var ticker = Ticker;
             if(ticker == null)
-                return;
+                return false;
             var dynamicQtyLong = DynamicQtyLong;
             if(dynamicQtyLong == null)
-                return;
+                return false;
 
             decimal unstuckQuantity = forceKill
                 ? longPosition.Quantity
@@ -406,21 +420,22 @@ namespace CryptoBlade.Strategies.Common
                 await CancelOrderAsync(longTakeProfitOrder.OrderId, cancel);
             }
             
-            await PlaceLongTakeProfitOrderAsync(unstuckQuantity, ticker.BestAskPrice, force, cancel);
+            bool orderPlaced = await PlaceLongTakeProfitOrderAsync(unstuckQuantity, ticker.BestAskPrice, force, cancel);
+            return orderPlaced;
         }
 
-        private async Task ExecuteShortUnstuckAsync(bool force, bool forceKill, CancellationToken cancel)
+        private async Task<bool> ExecuteShortUnstuckAsync(bool force, bool forceKill, CancellationToken cancel)
         {
             var shortPosition = ShortPosition;
             if (shortPosition == null)
-                return;
+                return false;
             var shortTakeProfitOrders = ShortTakeProfitOrders;
             var ticker = Ticker;
             if (ticker == null)
-                return;
+                return false;
             var dynamicQtyShort = DynamicQtyShort;
             if (dynamicQtyShort == null)
-                return;
+                return false;
 
             decimal unstuckQuantity = forceKill 
                 ? shortPosition.Quantity 
@@ -432,7 +447,8 @@ namespace CryptoBlade.Strategies.Common
                 await CancelOrderAsync(shortTakeProfitOrder.OrderId, cancel);
             }
 
-            await PlaceShortTakeProfitOrderAsync(unstuckQuantity, ticker.BestBidPrice, force, cancel);
+            bool orderPlaced = await PlaceShortTakeProfitOrderAsync(unstuckQuantity, ticker.BestBidPrice, force, cancel);
+            return orderPlaced;
         }
 
         private decimal CalculateUnstuckingQuantity(decimal positionQuantity, bool force, decimal dynamicQuantity)
@@ -593,17 +609,19 @@ namespace CryptoBlade.Strategies.Common
                 LastCandleShortOrder = candleTime;
         }
 
-        private async Task PlaceLongTakeProfitOrderAsync(decimal qty, decimal price, bool force, CancellationToken cancel)
+        private async Task<bool> PlaceLongTakeProfitOrderAsync(decimal qty, decimal price, bool force, CancellationToken cancel)
         {
-            await m_cbFuturesRestClient.PlaceLongTakeProfitOrderAsync(Symbol, qty, price, force, cancel);
+            var orderPlaced = await m_cbFuturesRestClient.PlaceLongTakeProfitOrderAsync(Symbol, qty, price, force, cancel);
+            return orderPlaced;
         }
 
-        private async Task PlaceShortTakeProfitOrderAsync(decimal qty, decimal price, bool force, CancellationToken cancel)
+        private async Task<bool> PlaceShortTakeProfitOrderAsync(decimal qty, decimal price, bool force, CancellationToken cancel)
         {
-            await m_cbFuturesRestClient.PlaceShortTakeProfitOrderAsync(Symbol, qty, price, force, cancel);
+            var orderPlaced = await m_cbFuturesRestClient.PlaceShortTakeProfitOrderAsync(Symbol, qty, price, force, cancel);
+            return orderPlaced;
         }
 
-        private bool NoPositionIncreaseOrderForCandle(Quote candle, DateTime? lastTrade)
+        private static bool NoTradeForCandle(Quote candle, DateTime? lastTrade)
         {
             if (lastTrade == null)
                 return true;

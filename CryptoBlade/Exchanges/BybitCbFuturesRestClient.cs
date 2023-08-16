@@ -274,10 +274,31 @@ namespace CryptoBlade.Exchanges
                             reduceOnly: true,
                             timeInForce: force ? TimeInForce.GoodTillCanceled : TimeInForce.PostOnly,
                             ct: cancel));
-            if (sellOrderRes.GetResultOrError(out _, out var error))
-                return true;
-            m_logger.LogWarning($"{symbol} Failed to place long take profit order: {error}");
-            return false;
+            if (!sellOrderRes.GetResultOrError(out var sellOrder, out var error))
+            {
+                m_logger.LogWarning($"{symbol} Failed to place long take profit order: {error}");
+                return false;
+            }
+                
+            var orderStatusRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrder>
+                .RetryTooManyVisitsBybitResponse
+                .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
+                    category: m_category,
+                    symbol: symbol,
+                    orderId: sellOrder.OrderId,
+                    ct: cancel));
+            if (orderStatusRes.GetResultOrError(out var orderStatus, out _))
+            {
+                var order = orderStatus.List
+                    .FirstOrDefault(x => string.Equals(x.OrderId, sellOrder.OrderId, StringComparison.Ordinal));
+                if (order != null && order.Status == OrderStatus.Cancelled)
+                {
+                    m_logger.LogDebug($"{symbol} long take profit order was cancelled.");
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force,
@@ -295,11 +316,31 @@ namespace CryptoBlade.Exchanges
                     reduceOnly: true,
                     timeInForce: force ? TimeInForce.GoodTillCanceled : TimeInForce.PostOnly,
                     ct: cancel));
-            if (buyOrderRes.GetResultOrError(out _, out var error))
-                return true;
-            m_logger.LogWarning($"{symbol} Failed to place short take profit order: {error}");
+            if (!buyOrderRes.GetResultOrError(out var buyOrder, out var error))
+            {
+                m_logger.LogWarning($"{symbol} Failed to place short take profit order: {error}");
+                return false;
+            }
 
-            return false;
+            var orderStatusRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrder>
+                .RetryTooManyVisitsBybitResponse
+                .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
+                    category: m_category,
+                    symbol: symbol,
+                    orderId: buyOrder.OrderId,
+                    ct: cancel));
+            if (orderStatusRes.GetResultOrError(out var orderStatus, out _))
+            {
+                var order = orderStatus.List
+                    .FirstOrDefault(x => string.Equals(x.OrderId, buyOrder.OrderId, StringComparison.Ordinal));
+                if (order != null && order.Status == OrderStatus.Cancelled)
+                {
+                    m_logger.LogDebug($"{symbol} short take profit order was cancelled.");
+                    return false;
+                }
+            }
+
+            return true;
         }
 
         public async Task<Strategies.Wallet.Balance> GetBalancesAsync(CancellationToken cancel = default)

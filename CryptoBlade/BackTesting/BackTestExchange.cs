@@ -497,35 +497,16 @@ namespace CryptoBlade.BackTesting
                 {
                     foreach (var order in openOrders)
                     {
-                        if (m_options.Value.OptimisticFill)
+                        if (order.Side == OrderSide.Sell && order.CreateTime < candle.StartTime && candle.Open > order.Price)
                         {
-                            if(order.Side == OrderSide.Sell && order.CreateTime < candle.StartTime && candle.High > order.Price)
-                            {
-                                order.Status = OrderStatus.Filled;
-                                filledOrders.Add(order);
-                            }
-
-                            if (order.Side == OrderSide.Buy && order.CreateTime < candle.StartTime && candle.Low < order.Price)
-                            {
-                                order.Status = OrderStatus.Filled;
-                                filledOrders.Add(order);
-                            }
+                            order.Status = OrderStatus.Filled;
+                            filledOrders.Add(order);
                         }
-                        else
-                        {
-                            bool upCandle = candle.Open < candle.Close;
-                            bool downCandle = candle.Open > candle.Close;
-                            if (order.Side == OrderSide.Sell && upCandle && order.CreateTime < candle.StartTime && candle.Close > order.Price)
-                            {
-                                order.Status = OrderStatus.Filled;
-                                filledOrders.Add(order);
-                            }
 
-                            if (order.Side == OrderSide.Buy && downCandle && order.CreateTime < candle.StartTime && candle.Close < order.Price)
-                            {
-                                order.Status = OrderStatus.Filled;
-                                filledOrders.Add(order);
-                            }
+                        if (order.Side == OrderSide.Buy && order.CreateTime < candle.StartTime && candle.Open < order.Price)
+                        {
+                            order.Status = OrderStatus.Filled;
+                            filledOrders.Add(order);
                         }
                     }
 

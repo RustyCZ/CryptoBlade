@@ -29,7 +29,7 @@ services:
         - CB_TradingBot__Unstucking__Enabled=true
         - CB_TradingBot__Unstucking__SlowUnstuckThresholdPercent=-0.1
         - CB_TradingBot__Unstucking__SlowUnstuckPositionThresholdPercent=-0.015
-        - CB_TradingBot__Unstucking__SlowUnstuckPercentStep=0.10
+        - CB_TradingBot__Unstucking__SlowUnstuckPercentStep=0.01
         - CB_TradingBot__Unstucking__ForceUnstuckThresholdPercent=-0.3
         - CB_TradingBot__Unstucking__ForceUnstuckPositionThresholdPercent=-0.02
         - CB_TradingBot__Unstucking__ForceUnstuckPercentStep=0.01

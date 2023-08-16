@@ -17,5 +17,7 @@
         public decimal TakerFeeRate { get; set; } = 0.00055m;
 
         public bool OptimisticFill { get; set; } = true;
+
+        public string HistoricalDataDirectory { get; set; } = "HistoricalData";
     }
 }

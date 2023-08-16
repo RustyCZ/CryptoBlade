@@ -1,4 +1,5 @@
-﻿using CryptoBlade.Exchanges;
+﻿using System.Text.Json;
+using CryptoBlade.Exchanges;
 using CryptoBlade.Mapping;
 using CryptoBlade.Models;
 using CryptoBlade.Strategies.Wallet;
@@ -323,8 +324,38 @@ namespace CryptoBlade.BackTesting
 
         public async Task<SymbolInfo[]> GetSymbolInfoAsync(CancellationToken cancel = default)
         {
-            var symbolInfo = await m_cbFuturesRestClient.GetSymbolInfoAsync(cancel);
-            return symbolInfo.Where(x => m_options.Value.Symbols.Contains(x.Name)).ToArray();
+            // try to read from json file
+            string jsonFile = Path.Combine(m_options.Value.HistoricalDataDirectory, "symbolinfo.json");
+            SymbolInfo[]? symbolInfo = null;
+            if (File.Exists(jsonFile))
+            {
+                try
+                {
+                    var json = await File.ReadAllTextAsync(jsonFile, cancel);
+                    symbolInfo = JsonSerializer.Deserialize<SymbolInfo[]>(json);
+                }
+                catch (Exception)
+                {
+                    File.Delete(jsonFile);
+                }
+            }
+            HashSet<string> cachedSymbols = new HashSet<string>();
+            if (symbolInfo != null)
+            {
+                foreach (var symbol in symbolInfo)
+                    cachedSymbols.Add(symbol.Name);
+            }
+
+            if (symbolInfo == null || symbolInfo.Length == 0 || !m_options.Value.Symbols.Any(x => cachedSymbols.Contains(x)))
+            {
+                symbolInfo = await m_cbFuturesRestClient.GetSymbolInfoAsync(cancel);
+                var json = JsonSerializer.Serialize(symbolInfo);
+                if(File.Exists(jsonFile))
+                    File.Delete(jsonFile);
+                await File.WriteAllTextAsync(jsonFile, json, cancel);
+            }
+
+            return symbolInfo;
         }
 
         public async Task<Candle[]> GetKlinesAsync(string symbol, TimeFrame interval, int limit, CancellationToken cancel = default)

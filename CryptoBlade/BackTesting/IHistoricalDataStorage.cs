@@ -1,4 +1,5 @@
-﻿using CryptoBlade.BackTesting.Model;
+﻿using Bybit.Net.Clients.V5;
+using CryptoBlade.BackTesting.Model;
 using CryptoBlade.Models;
 
 namespace CryptoBlade.BackTesting

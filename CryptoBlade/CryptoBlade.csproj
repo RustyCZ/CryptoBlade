@@ -17,6 +17,7 @@
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.0" />
     <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.1.2" />
     <PackageReference Include="Polly" Version="7.2.4" />
+    <PackageReference Include="protobuf-net" Version="3.2.26" />
     <PackageReference Include="ScottPlot" Version="5.0.8-beta" />
     <PackageReference Include="Skender.Stock.Indicators" Version="2.4.10" />
     <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="2.88.3" />

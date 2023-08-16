@@ -111,6 +111,7 @@ namespace CryptoBlade
                     cbRestClient);
                 return exchange;
             });
+            const string historicalDataDirectory = "HistoricalData";
             builder.Services.AddOptions<BackTestExchangeOptions>().Configure(x =>
             {
                 x.Start = tradingBotOptions.BackTest.Start;
@@ -120,6 +121,7 @@ namespace CryptoBlade
                 x.Symbols = tradingBotOptions.Whitelist;
                 x.MakerFeeRate = tradingBotOptions.MakerFeeRate;
                 x.TakerFeeRate = tradingBotOptions.TakerFeeRate;
+                x.HistoricalDataDirectory = historicalDataDirectory;
             });
             builder.Services.AddSingleton<IBackTestDataDownloader, BackTestDataDownloader>();
             builder.Services.AddSingleton<IHistoricalDataDownloader>(provider =>
@@ -133,11 +135,10 @@ namespace CryptoBlade
                     cbRestClient);
                 return downloader;
             });
-            builder.Services.AddSingleton<IHistoricalDataStorage, HistoricalDataStorage>();
-            builder.Services.AddOptions<HistoricalTradesStorageOptions>().Configure(x =>
+            builder.Services.AddSingleton<IHistoricalDataStorage, ProtoHistoricalDataStorage>();
+            builder.Services.AddOptions<ProtoHistoricalDataStorageOptions>().Configure(x =>
             {
-                x.Directory = "HistoricalData";
-                x.MemorySizePerSymbolMB = tradingBotOptions.BackTest.MemorySizePerSymbolMB;
+                x.Directory = historicalDataDirectory;
             });
             builder.Services.AddSingleton<ICbFuturesRestClient>(sp => sp.GetRequiredService<BackTestExchange>());
             builder.Services.AddSingleton<ICbFuturesSocketClient>(sp => sp.GetRequiredService<BackTestExchange>());

@@ -17,6 +17,8 @@ namespace CryptoBlade.BackTesting
         private readonly BackTestExchange m_backTestExchange;
         private IUpdateSubscription? m_walletSubscription;
         private decimal m_lowestEquityToBalance;
+        private decimal m_maxDrawDown;
+        private decimal m_localTopBalance;
         private readonly List<BalanceInTime> m_balanceHistory;
         private readonly AsyncLock m_lock;
         private readonly string m_testId;
@@ -46,6 +48,8 @@ namespace CryptoBlade.BackTesting
             using (await m_lock.LockAsync(cancellationToken))
             {
                 var balance = await m_backTestExchange.GetBalancesAsync(cancellationToken);
+                m_localTopBalance = balance.WalletBalance!.Value;
+                m_maxDrawDown = 0.0m;
                 var time = m_backTestExchange.CurrentTime;
                 m_balanceHistory.Add(new BalanceInTime(balance, time));
                 m_walletSubscription = await m_backTestExchange.SubscribeToWalletUpdatesAsync(OnWalletUpdate, cancellationToken);
@@ -63,6 +67,12 @@ namespace CryptoBlade.BackTesting
                     var equityToBalance = obj.Equity!.Value / obj.WalletBalance!.Value;
                     if (equityToBalance < m_lowestEquityToBalance)
                         m_lowestEquityToBalance = equityToBalance;
+                    var walletBalance = obj.WalletBalance!.Value;
+                    if (walletBalance > m_localTopBalance)
+                        m_localTopBalance = walletBalance;
+                    var drawDown = 1.0m - (walletBalance / m_localTopBalance);
+                    if (drawDown > m_maxDrawDown)
+                        m_maxDrawDown = drawDown;
                     m_balanceHistory.Add(new BalanceInTime(obj, time));
                     if (obj.Equity < 0)
                     {
@@ -120,6 +130,7 @@ namespace CryptoBlade.BackTesting
                 RealizedPnl = m_balanceHistory.Last().Balance.RealizedPnl!.Value,
                 AverageDailyGainPercent = dailyGainPercent,
                 TotalDays = numberOfDays,
+                MaxDrawDown = m_maxDrawDown,
             };
             var directory = Path.Combine(m_options.Value.BackTestsDirectory, m_testId);
             Directory.CreateDirectory(directory);
@@ -182,6 +193,7 @@ namespace CryptoBlade.BackTesting
         public decimal UnrealizedPnl { get; set; }
         public decimal RealizedPnl { get; set; }
         public decimal AverageDailyGainPercent { get; set; }
+        public decimal MaxDrawDown { get; set; }
         public int TotalDays { get; set; }
         public OpenPositionWithOrders[] OpenPositionWithOrders { get; set; } = Array.Empty<OpenPositionWithOrders>();
     }

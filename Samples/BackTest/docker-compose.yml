@@ -39,6 +39,7 @@ services:
         - CB_TradingBot__BackTest__End=2023-08-13
         - CB_TradingBot__BackTest__ResultFileName=result.json
         - CB_TradingBot__BackTest__ResultDetailedFileName=result_detailed.json
+        - CB_TradingBot__BackTest__MemorySizePerSymbolMB=256
         - CB_TradingBot__Whitelist__0=ARBUSDT
         - CB_TradingBot__Whitelist__1=OPUSDT
         - CB_TradingBot__Whitelist__2=XRPUSDT

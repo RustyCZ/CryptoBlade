@@ -137,6 +137,7 @@ namespace CryptoBlade
             builder.Services.AddOptions<HistoricalTradesStorageOptions>().Configure(x =>
             {
                 x.Directory = "HistoricalData";
+                x.MemorySizePerSymbolMB = tradingBotOptions.BackTest.MemorySizePerSymbolMB;
             });
             builder.Services.AddSingleton<ICbFuturesRestClient>(sp => sp.GetRequiredService<BackTestExchange>());
             builder.Services.AddSingleton<ICbFuturesSocketClient>(sp => sp.GetRequiredService<BackTestExchange>());

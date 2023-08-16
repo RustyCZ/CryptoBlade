@@ -20,7 +20,7 @@ namespace CryptoBlade.BackTesting
         {
             if (!m_symbolStorages.TryGetValue(symbol, out var storage))
             { 
-                storage = new HistoricalSymbolStorage(symbol, m_options.Value.Directory);
+                storage = new HistoricalSymbolStorage(symbol, m_options.Value.Directory, m_options.Value.MemorySizePerSymbolMB);
                 m_symbolStorages.Add(symbol, storage);
             }
 
@@ -31,7 +31,7 @@ namespace CryptoBlade.BackTesting
         {
             if (!m_symbolStorages.TryGetValue(symbol, out var storage))
             {
-                storage = new HistoricalSymbolStorage(symbol, m_options.Value.Directory);
+                storage = new HistoricalSymbolStorage(symbol, m_options.Value.Directory, m_options.Value.MemorySizePerSymbolMB);
                 m_symbolStorages.Add(symbol, storage);
             }
             return await storage.ReadAsync(day);
@@ -41,7 +41,7 @@ namespace CryptoBlade.BackTesting
         {
             if (!m_symbolStorages.TryGetValue(symbol, out var storage))
             {
-                storage = new HistoricalSymbolStorage(symbol, m_options.Value.Directory);
+                storage = new HistoricalSymbolStorage(symbol, m_options.Value.Directory, m_options.Value.MemorySizePerSymbolMB);
                 m_symbolStorages.Add(symbol, storage);
             }
             return await storage.FindMissingDaysAsync(start, end);

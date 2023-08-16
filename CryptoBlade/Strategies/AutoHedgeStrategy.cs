@@ -11,7 +11,7 @@ namespace CryptoBlade.Strategies
     public class AutoHedgeStrategy : TradingStrategyBase
     {
         private readonly IOptions<AutoHedgeStrategyOptions> m_options;
-        private const int c_candlePeriod = 50;
+        private const int c_candlePeriod = 15;
 
         public AutoHedgeStrategy(IOptions<AutoHedgeStrategyOptions> options,
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient) 

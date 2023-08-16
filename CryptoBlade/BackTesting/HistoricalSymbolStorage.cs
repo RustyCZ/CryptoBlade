@@ -11,29 +11,29 @@ namespace CryptoBlade.BackTesting
         private readonly FasterKV<long, CandleStoreModel> m_candles;
         private readonly FasterKV<long, DayStoreModel> m_days;
 
-        public HistoricalSymbolStorage(string symbol, string directory)
+        public HistoricalSymbolStorage(string symbol, string directory, int memorySizeMB)
         {
             var tradesSettings = new FasterKVSettings<long, TradeStoreModel>($"{directory}/{symbol.ToUpperInvariant()}/Trades");
             tradesSettings.TryRecoverLatest = true;
             tradesSettings.PageSize = 1024 * 1024 * 4;
-            tradesSettings.SegmentSize = 1024 * 1024 * 4;
-            tradesSettings.MemorySize = 1024 * 1024 * 256;
+            tradesSettings.SegmentSize = 1024 * 1024 * 8;
+            tradesSettings.MemorySize = 1024 * 1024 * memorySizeMB;
             tradesSettings.IndexSize = 1024 * 1024 * 4;
             m_trades = new FasterKV<long, TradeStoreModel>(tradesSettings);
 
             var candlesSettings = new FasterKVSettings<long, CandleStoreModel>($"{directory}/{symbol.ToUpperInvariant()}/Candles");
             candlesSettings.TryRecoverLatest = true;
             candlesSettings.PageSize = 1024 * 1024 * 4;
-            candlesSettings.SegmentSize = 1024 * 1024 * 4;
-            candlesSettings.MemorySize = 1024 * 1024 * 256;
+            candlesSettings.SegmentSize = 1024 * 1024 * 8;
+            candlesSettings.MemorySize = 1024 * 1024 * memorySizeMB;
             candlesSettings.IndexSize = 1024 * 1024 * 4;
             m_candles = new FasterKV<long, CandleStoreModel>(candlesSettings);
 
             var daysSettings = new FasterKVSettings<long, DayStoreModel>($"{directory}/{symbol.ToUpperInvariant()}/Days");
             daysSettings.TryRecoverLatest = true;
             daysSettings.PageSize = 1024 * 1024 * 4;
-            daysSettings.SegmentSize = 1024 * 1024 * 4;
-            daysSettings.MemorySize = 1024 * 1024 * 256;
+            daysSettings.SegmentSize = 1024 * 1024 * 8;
+            daysSettings.MemorySize = 1024 * 1024 * memorySizeMB;
             daysSettings.IndexSize = 1024 * 1024 * 4;
             m_days = new FasterKV<long, DayStoreModel>(daysSettings);
         }

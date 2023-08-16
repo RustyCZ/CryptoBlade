@@ -182,7 +182,6 @@ namespace CryptoBlade.BackTesting
 
         public async Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force, CancellationToken cancel = default)
         {
-            Order order;
             using (await m_lock.LockAsync())
             {
                 if (!m_longPositions.TryGetValue(symbol, out var openPosition))
@@ -192,32 +191,40 @@ namespace CryptoBlade.BackTesting
                     return false;
                 if (force)
                 {
-                    order = new Order
-                    {
-                        Symbol = symbol,
-                        AveragePrice = price,
-                        Status = OrderStatus.Filled,
-                        Side = OrderSide.Sell,
-                        Price = price,
-                        Quantity = qty,
-                        OrderId = Guid.NewGuid().ToString(),
-                        PositionMode = OrderPositionMode.BothSideBuy,
-                        QuantityFilled = qty,
-                        ValueFilled = qty * price,
-                        QuantityRemaining = 0,
-                        ReduceOnly = true,
-                        ValueRemaining = 0,
-                        CreateTime = m_currentTime,
-                    };
-                    openPosition.AddOrder(order);
-                    var profitOrLoss = (order.Price!.Value - position.AveragePrice) * order.Quantity;
+                    var profitOrLoss = (price - position.AveragePrice) * qty;
                     await UpdateBalanceAsync(profitOrLoss);
-                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.TakerFeeRate;
+                    decimal fee = price * qty * m_options.Value.TakerFeeRate;
                     await AddFeeToBalanceAsync(-fee);
+                    
+                    if (position.Quantity != qty)
+                    {
+                        Order order = new Order
+                        {
+                            Symbol = symbol,
+                            AveragePrice = price,
+                            Status = OrderStatus.Filled,
+                            Side = OrderSide.Sell,
+                            Price = price,
+                            Quantity = qty,
+                            OrderId = Guid.NewGuid().ToString(),
+                            PositionMode = OrderPositionMode.BothSideBuy,
+                            QuantityFilled = qty,
+                            ValueFilled = qty * price,
+                            QuantityRemaining = 0,
+                            ReduceOnly = true,
+                            ValueRemaining = 0,
+                            CreateTime = m_currentTime,
+                        };
+                        openPosition.AddOrder(order);
+                    }
+                    else
+                    {
+                        m_longPositions.Remove(symbol);
+                    }
                 }
                 else
                 {
-                    order = new Order
+                    Order order = new Order
                     {
                         Symbol = symbol,
                         AveragePrice = price,
@@ -244,14 +251,11 @@ namespace CryptoBlade.BackTesting
                 }
             }
 
-            await NotifyOrderAsync(order);
-
             return true;
         }
 
         public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force, CancellationToken cancel = default)
         {
-            Order order;
             using (await m_lock.LockAsync())
             {
                 if (!m_shortPositions.TryGetValue(symbol, out var openPosition))
@@ -261,32 +265,40 @@ namespace CryptoBlade.BackTesting
                     return false;
                 if (force)
                 {
-                    order = new Order
-                    {
-                        Symbol = symbol,
-                        AveragePrice = price,
-                        Status = OrderStatus.Filled,
-                        Side = OrderSide.Buy,
-                        Price = price,
-                        Quantity = qty,
-                        OrderId = Guid.NewGuid().ToString(),
-                        PositionMode = OrderPositionMode.BothSideSell,
-                        QuantityFilled = qty,
-                        ValueFilled = qty * price,
-                        QuantityRemaining = 0,
-                        ReduceOnly = true,
-                        ValueRemaining = 0,
-                        CreateTime = m_currentTime,
-                    };
-                    openPosition.AddOrder(order);
-                    var profitOrLoss = (position.AveragePrice - order.Price!.Value) * order.Quantity;
+                    var profitOrLoss = (position.AveragePrice - price) * qty;
                     await UpdateBalanceAsync(profitOrLoss);
-                    decimal fee = order.Price!.Value * order.Quantity * m_options.Value.TakerFeeRate;
+                    decimal fee = price * qty * m_options.Value.TakerFeeRate;
                     await AddFeeToBalanceAsync(-fee);
+
+                    if (position.Quantity != qty)
+                    {
+                        Order order = new Order
+                        {
+                            Symbol = symbol,
+                            AveragePrice = price,
+                            Status = OrderStatus.Filled,
+                            Side = OrderSide.Buy,
+                            Price = price,
+                            Quantity = qty,
+                            OrderId = Guid.NewGuid().ToString(),
+                            PositionMode = OrderPositionMode.BothSideSell,
+                            QuantityFilled = qty,
+                            ValueFilled = qty * price,
+                            QuantityRemaining = 0,
+                            ReduceOnly = true,
+                            ValueRemaining = 0,
+                            CreateTime = m_currentTime,
+                        };
+                        openPosition.AddOrder(order);
+                    }
+                    else
+                    {
+                        m_shortPositions.Remove(symbol);
+                    }
                 }
                 else
                 {
-                    order = new Order
+                    Order order = new Order
                     {
                         Symbol = symbol,
                         AveragePrice = price,
@@ -311,8 +323,6 @@ namespace CryptoBlade.BackTesting
                     openOrders.Add(order);
                 }
             }
-
-            await NotifyOrderAsync(order);
 
             return true;
         }

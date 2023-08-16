@@ -51,7 +51,7 @@ namespace CryptoBlade
             builder.Services.Configure<TradingBotOptions>(builder.Configuration.GetSection("TradingBot"));
             builder.Services.AddSingleton<ITradingStrategyFactory, TradingStrategyFactory>();
 
-            bool isBackTest = tradingMode == TradingMode.DynamicBackTest;
+            bool isBackTest = tradingBotOptions.IsBackTest();
 
             if (isBackTest)
             {

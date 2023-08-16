@@ -23,5 +23,7 @@ namespace CryptoBlade.Strategies
         public decimal SlowUnstuckPercentStep { get; set; } = 0.05m;
 
         public decimal ForceUnstuckPercentStep { get; set; } = 0.1m;
+
+        public int InitialUntradableDays { get; set; }
     }
 }

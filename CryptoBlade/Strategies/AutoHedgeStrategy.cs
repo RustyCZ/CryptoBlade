@@ -12,7 +12,6 @@ namespace CryptoBlade.Strategies
     {
         private readonly IOptions<AutoHedgeStrategyOptions> m_options;
         private const int c_candlePeriod = 50;
-        private const int c_untradableFirstDays = 30;
 
         public AutoHedgeStrategy(IOptions<AutoHedgeStrategyOptions> options,
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient) 
@@ -67,7 +66,7 @@ namespace CryptoBlade.Strategies
             
             if (lastQuote != null)
             {
-                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > c_untradableFirstDays;
+                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > m_options.Value.InitialUntradableDays;
                 var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes);
                 var volume = TradeSignalHelpers.VolumeInQuoteCurrency(lastQuote);
                 var sma = quotes.GetSma(14);

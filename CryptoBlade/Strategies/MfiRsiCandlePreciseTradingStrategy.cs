@@ -66,7 +66,7 @@ namespace CryptoBlade.Strategies
             bool hasSellSignal = false;
             if (lastQuote != null)
             {
-                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > c_untradableFirstDays;
+                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > m_options.Value.InitialUntradableDays;
                 var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes);
                 var mfi = quotes.GetMfi();
                 var lastMfi = mfi.LastOrDefault();

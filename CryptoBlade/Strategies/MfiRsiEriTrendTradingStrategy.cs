@@ -99,7 +99,7 @@ namespace CryptoBlade.Strategies
                 bool hasMinVolume = volume >= m_options.Value.MinimumVolume;
                 bool shouldAddToShort = false;
                 bool shouldAddToLong = false;
-                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > c_untradableFirstDays;
+                bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > m_options.Value.InitialUntradableDays;
                 if (ticker != null 
                     && ma6HighLast != null && ma6HighLast.Sma.HasValue
                     && ma6LowLast != null && ma6LowLast.Sma.HasValue)

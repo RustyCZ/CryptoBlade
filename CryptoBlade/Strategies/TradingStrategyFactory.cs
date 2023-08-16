@@ -1,5 +1,6 @@
 ﻿using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
+using CryptoBlade.Helpers;
 using CryptoBlade.Strategies.Common;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
@@ -68,6 +69,8 @@ namespace CryptoBlade.Strategies
         private IOptions<TOptions> CreateTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup) 
             where TOptions : TradingStrategyBaseOptions, new()
         {
+            bool isBackTest = config.IsBackTest();
+            int initialUntradableDays = isBackTest ? config.BackTest.InitialUntradableDays : 0;
             var options = new TOptions
             {
                 DcaOrdersCount = config.DcaOrdersCount,
@@ -80,6 +83,7 @@ namespace CryptoBlade.Strategies
                 MinProfitRate = config.MinProfitRate,
                 ForceUnstuckPercentStep = config.Unstucking.ForceUnstuckPercentStep,
                 SlowUnstuckPercentStep = config.Unstucking.SlowUnstuckPercentStep,
+                InitialUntradableDays = initialUntradableDays,
             };
             optionsSetup(options);
             return Options.Create(options);

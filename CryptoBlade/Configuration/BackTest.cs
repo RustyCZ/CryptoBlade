@@ -15,5 +15,7 @@
         public string ResultFileName { get; set; } = "result.json";
 
         public string ResultDetailedFileName { get; set; } = "result_detailed.json";
+
+        public int InitialUntradableDays { get; set; } = 30;
     }
 }

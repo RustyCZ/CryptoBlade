@@ -178,7 +178,7 @@ namespace CryptoBlade.Strategies.Common
             await EvaluateSignalsAsync(cancel);
         }
 
-        public async Task ExecuteAsync(bool allowLongPositionOpen, bool allowShortPositionOpen, CancellationToken cancel)
+        public async Task ExecuteAsync(ExecuteParams executeParams, CancellationToken cancel)
         {
             bool isLive = m_options.Value.TradingMode == TradingMode.Normal 
                           || m_options.Value.TradingMode == TradingMode.Dynamic
@@ -231,7 +231,7 @@ namespace CryptoBlade.Strategies.Common
                 walletShortExposure = shortExposure / wallet.WalletBalance;
 
             // log variables above
-            m_logger.LogDebug($"{Name}: {Symbol} Buy orders: '{buyOrders.Length}'; Sell orders: '{sellOrders.Length}'; Long position: '{longPosition?.Quantity}'; Short position: '{shortPosition?.Quantity}'; Has buy signal: '{hasBuySignal}'; Has sell signal: '{hasSellSignal}'; Has buy extra signal: '{hasBuyExtraSignal}'; Has sell extra signal: '{hasSellExtraSignal}'. Allow long open: '{allowLongPositionOpen}' Allow short open: '{allowShortPositionOpen}'");
+            m_logger.LogDebug($"{Name}: {Symbol} Buy orders: '{buyOrders.Length}'; Sell orders: '{sellOrders.Length}'; Long position: '{longPosition?.Quantity}'; Short position: '{shortPosition?.Quantity}'; Has buy signal: '{hasBuySignal}'; Has sell signal: '{hasSellSignal}'; Has buy extra signal: '{hasBuyExtraSignal}'; Has sell extra signal: '{hasSellExtraSignal}'. Allow long open: '{executeParams.AllowLongOpen}' Allow short open: '{executeParams.AllowShortOpen}'");
 
             if (m_options.Value.TradingMode == TradingMode.Readonly)
             {
@@ -264,11 +264,11 @@ namespace CryptoBlade.Strategies.Common
             bool canOpenLongPosition = (m_options.Value.TradingMode == TradingMode.Normal
                                         || m_options.Value.TradingMode == TradingMode.Dynamic
                                         || m_options.Value.TradingMode == TradingMode.DynamicBackTest) 
-                                       && allowLongPositionOpen;
+                                       && executeParams.AllowLongOpen;
             bool canOpenShortPosition = (m_options.Value.TradingMode == TradingMode.Normal 
                                          || m_options.Value.TradingMode == TradingMode.Dynamic
                                          || m_options.Value.TradingMode == TradingMode.DynamicBackTest) 
-                                        && allowShortPositionOpen;
+                                        && executeParams.AllowShortOpen;
             if (ticker != null && lastPrimaryQuote != null)
             {
                 if (hasBuySignal
@@ -303,7 +303,8 @@ namespace CryptoBlade.Strategies.Common
                     && !buyOrders.Any()
                     && dynamicQtyLong.HasValue
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleLongOrder)
-                    && LongFundingWithinLimit(ticker))
+                    && LongFundingWithinLimit(ticker)
+                    && !executeParams.LongUnstucking)
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open long position");
                     await PlaceLimitBuyOrderAsync(dynamicQtyLong.Value, ticker.BestBidPrice, lastPrimaryQuote.Date, cancel);
@@ -317,7 +318,8 @@ namespace CryptoBlade.Strategies.Common
                     && !sellOrders.Any()
                     && dynamicQtyShort.HasValue
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleShortOrder)
-                    && ShortFundingWithinLimit(ticker))
+                    && ShortFundingWithinLimit(ticker)
+                    && !executeParams.ShortUnstucking)
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open short position");
                     await PlaceLimitSellOrderAsync(dynamicQtyShort.Value, ticker.BestAskPrice, lastPrimaryQuote.Date, cancel);
@@ -329,7 +331,10 @@ namespace CryptoBlade.Strategies.Common
                                       || LastCandleShortOrder.HasValue && LastCandleShortOrder.Value == lastPrimaryQuote.Date);
             // do not place take profit orders if we have placed an order for the current candle
             // quantity would not be valid
-            if (longPosition != null && longTakeProfitPrice.HasValue && !hasPlacedOrder)
+            if (longPosition != null 
+                && longTakeProfitPrice.HasValue 
+                && !hasPlacedOrder
+                && !executeParams.LongUnstucking)
             {
                 decimal longTakeProfitQty = longTakeProfitOrders.Length > 0 ? longTakeProfitOrders.Sum(x => x.Quantity) : 0;
                 if (longTakeProfitQty != longPosition.Quantity || NextLongProfitReplacement == null || (NextLongProfitReplacement != null && utcNow > NextLongProfitReplacement))
@@ -345,7 +350,10 @@ namespace CryptoBlade.Strategies.Common
                 }
             }
 
-            if (shortPosition != null && shortTakeProfitPrice.HasValue && !hasPlacedOrder)
+            if (shortPosition != null 
+                && shortTakeProfitPrice.HasValue 
+                && !hasPlacedOrder
+                && !executeParams.ShortUnstucking)
             {
                 decimal shortTakeProfitQty = shortTakeProfitOrders.Length > 0 ? shortTakeProfitOrders.Sum(x => x.Quantity) : 0;
                 if ((shortTakeProfitQty != shortPosition.Quantity) || NextShortProfitReplacement == null || (NextShortProfitReplacement != null && utcNow > NextShortProfitReplacement))

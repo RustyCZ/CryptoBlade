@@ -52,7 +52,7 @@ namespace CryptoBlade.Strategies.Common
 
         Task InitializeAsync(Candle[] candles, Ticker ticker, CancellationToken cancel);
 
-        Task ExecuteAsync(bool allowLongPositionOpen, bool allowShortPositionOpen, CancellationToken cancel);
+        Task ExecuteAsync(ExecuteParams executeParams, CancellationToken cancel);
 
         Task ExecuteUnstuckAsync(bool unstuckLong, bool unstuckShort, bool forceUnstuckLong, bool forceUnstuckShort, bool forceKill, CancellationToken cancel);
 

@@ -455,7 +455,7 @@ namespace CryptoBlade.Services
                     try
                     {
                         executionParams.TryGetValue(symbol, out var execParam);
-                        await strategy.ExecuteAsync(execParam.AllowLongOpen, execParam.AllowShortOpen, cancel);
+                        await strategy.ExecuteAsync(execParam, cancel);
                     }
                     catch (Exception e)
                     {
@@ -507,7 +507,6 @@ namespace CryptoBlade.Services
             decimal? TotalWalletShortExposure,
             decimal? UnrealizedPnlPercent);
 
-        protected record struct ExecuteParams(bool AllowLongOpen, bool AllowShortOpen);
         protected record struct ExecuteUnstuckParams(bool UnstuckLong, bool UnstuckShort, bool ForceUnstuckLong, bool ForceUnstuckShort, bool ForceKill);
     }
 }

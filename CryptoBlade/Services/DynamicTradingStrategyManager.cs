@@ -187,24 +187,28 @@ namespace CryptoBlade.Services
                         {
                             while (StrategyExecutionChannel.Reader.TryRead(out var symbol))
                                 symbolsToProcess.Add(symbol);
-                            HashSet<string> unstuckingSymbols = new HashSet<string>();
+                            HashSet<string> unstuckingLong = new HashSet<string>();
+                            HashSet<string> unstuckingShort = new HashSet<string>();
                             if (m_options.Value.Unstucking.Enabled)
                             {
                                 var unstuckingSymbolsLocal = await ExecutePriorityUnstuckAsync(strategyState, cancel);
-                                unstuckingSymbols =
-                                    new HashSet<string>(
-                                        unstuckingSymbolsLocal.LongUnstucking.Concat(unstuckingSymbolsLocal.ShortUnstucking));
+                                unstuckingLong = new HashSet<string>(unstuckingSymbolsLocal.LongUnstucking);
+                                unstuckingShort = new HashSet<string>(unstuckingSymbolsLocal.ShortUnstucking);
                             }
-                            
+
                             // exclude unstucking symbols from processing, it can probably be optimized to allow execution for some positions
                             var inTradeSymbols = symbolsToProcess
-                                .Where(x => Strategies.TryGetValue(x, out var strategy) && strategy.IsInTrade && !unstuckingSymbols.Contains(strategy.Symbol))
+                                .Where(x => Strategies.TryGetValue(x, out var strategy) && strategy.IsInTrade)
                                 .Distinct()
                                 .ToArray();
 
                             // by default already trading strategies can only maintain existing positions
                             Dictionary<string, ExecuteParams> executeParams =
-                                inTradeSymbols.ToDictionary(x => x, _ => new ExecuteParams(false, false));
+                                inTradeSymbols.ToDictionary(x => x, x => new ExecuteParams(
+                                    false, 
+                                    false, 
+                                    unstuckingLong.Contains(x), 
+                                    unstuckingShort.Contains(x)));
 
                             var inLongTradeSymbols = Strategies.Values.Where(x => x.IsInLongTrade).ToArray();
                             var inShortTradeSymbols = Strategies.Values.Where(x => x.IsInShortTrade).ToArray();

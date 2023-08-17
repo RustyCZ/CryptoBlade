@@ -117,9 +117,18 @@ namespace CryptoBlade.BackTesting
             decimal initialBalance = m_balanceHistory.First().Balance.WalletBalance!.Value;
             decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value;
             decimal finalEquity = m_balanceHistory.Last().Balance.Equity!.Value;
+            decimal dailyGainPercent;
             int numberOfDays = (int)(m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays;
-            decimal dailyGain = (decimal)Math.Pow((double)(finalBalance / initialBalance), 1.0 / numberOfDays) - 1;
-            decimal dailyGainPercent = dailyGain * 100.0m;
+            try
+            {
+                decimal dailyGain = (decimal)Math.Pow((double)(finalBalance / initialBalance), 1.0 / numberOfDays) - 1;
+                dailyGainPercent = dailyGain * 100.0m;
+            }
+            catch (OverflowException)
+            {
+                double dailyGain = Math.Pow((double)finalBalance / (double)initialBalance, 1.0 / numberOfDays) - 1;
+                dailyGainPercent = (decimal)Math.Round(dailyGain * 100.0, 6);
+            }
             BacktestPerformanceResult result = new BacktestPerformanceResult
             {
                 InitialBalance = initialBalance,

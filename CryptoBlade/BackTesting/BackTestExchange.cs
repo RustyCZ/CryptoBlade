@@ -416,10 +416,10 @@ namespace CryptoBlade.BackTesting
             return new Ticker
             {
                 FundingRate = null,
-                BestAskPrice = currentCandle.Open,
-                BestBidPrice = currentCandle.Open,
-                LastPrice = currentCandle.Open,
-                Timestamp = currentCandle.StartTime,
+                BestAskPrice = currentCandle.Close,
+                BestBidPrice = currentCandle.Close,
+                LastPrice = currentCandle.Close,
+                Timestamp = currentCandle.StartTime + TimeSpan.FromMinutes(1),
             };
         }
 
@@ -506,10 +506,10 @@ namespace CryptoBlade.BackTesting
                             tickerUpdateSubscription.Notify(backtestProcessor.Key, new Ticker
                             {
                                 FundingRate = null,
-                                BestAskPrice = candle.Open,
-                                BestBidPrice = candle.Open,
-                                LastPrice = candle.Open,
-                                Timestamp = candle.StartTime,
+                                BestAskPrice = candle.Close,
+                                BestBidPrice = candle.Close,
+                                LastPrice = candle.Close,
+                                Timestamp = candle.StartTime + TimeSpan.FromMinutes(1),
                             });
                         }
                     }
@@ -538,13 +538,13 @@ namespace CryptoBlade.BackTesting
                 {
                     foreach (var order in openOrders)
                     {
-                        if (order.Side == OrderSide.Sell && order.CreateTime < candle.StartTime && candle.Open > order.Price)
+                        if (order.Side == OrderSide.Sell && order.CreateTime < candle.StartTime && candle.Close > order.Price)
                         {
                             order.Status = OrderStatus.Filled;
                             filledOrders.Add(order);
                         }
 
-                        if (order.Side == OrderSide.Buy && order.CreateTime < candle.StartTime && candle.Open < order.Price)
+                        if (order.Side == OrderSide.Buy && order.CreateTime < candle.StartTime && candle.Close < order.Price)
                         {
                             order.Status = OrderStatus.Filled;
                             filledOrders.Add(order);

@@ -32,9 +32,9 @@ namespace CryptoBlade.BackTesting
         public void UpdateUnrealizedProfitOrLoss(Candle candle)
         {
             if (Position.Side == PositionSide.Buy)
-                UnrealizedProfitOrLoss = (candle.Open - Position.AveragePrice) * Position.Quantity;
+                UnrealizedProfitOrLoss = (candle.Close - Position.AveragePrice) * Position.Quantity;
             else if (Position.Side == PositionSide.Sell)
-                UnrealizedProfitOrLoss = (Position.AveragePrice - candle.Open) * Position.Quantity;
+                UnrealizedProfitOrLoss = (Position.AveragePrice - candle.Close) * Position.Quantity;
         }
 
         public void AddOrder(Order order)

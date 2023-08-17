@@ -589,7 +589,10 @@ namespace CryptoBlade.Strategies.Common
             {
                 bool consistent = QuoteQueues[bufferedCandle.TimeFrame].Enqueue(bufferedCandle.ToQuote());
                 if (!consistent)
+                {
                     ConsistentData = false;
+                    m_logger.LogWarning($"Inconsistent data for {bufferedCandle.TimeFrame} candle {bufferedCandle.StartTime} for symbol {Symbol}");
+                }
                 if(bufferedCandle.TimeFrame == TimeFrame.OneMinute)
                     LastCandleUpdate = bufferedCandle.StartTime + bufferedCandle.TimeFrame.ToTimeSpan();
             }

@@ -24,5 +24,6 @@
         public decimal MinProfitRate { get; set; } = 0.0006m;
         public BackTest BackTest { get; set; } = new BackTest();
         public Unstucking Unstucking { get; set; } = new Unstucking();
+        public StrategyOptions Strategies { get; set; } = new StrategyOptions();
     }
 }

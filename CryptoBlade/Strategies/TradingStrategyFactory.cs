@@ -30,6 +30,9 @@ namespace CryptoBlade.Strategies
             if (string.Equals("MfiRsiEriTrend", strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateMfiRsiEriTrendPreciseStrategy(config, symbol);
 
+            if (string.Equals("LinearRegression", strategyName, StringComparison.OrdinalIgnoreCase))
+                return CreateLinearRegressionStrategy(config, symbol);
+
             return CreateAutoHedgeStrategy(config, symbol);
         }
 
@@ -64,6 +67,19 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinimumVolume = config.MinimumVolume;
                 });
             return new MfiRsiEriTrendTradingStrategy(options, symbol, m_walletManager, m_restClient);
+        }
+
+        private ITradingStrategy CreateLinearRegressionStrategy(TradingBotOptions config, string symbol)
+        {
+            var options = CreateTradeOptions<LinearRegressionStrategyOptions>(config, symbol,
+                strategyOptions =>
+                {
+                    strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
+                    strategyOptions.MinimumVolume = config.MinimumVolume;
+                    strategyOptions.ChannelLength = config.Strategies.LinearRegression.ChannelLength;
+                    strategyOptions.StandardDeviation = config.Strategies.LinearRegression.StandardDeviation;
+                });
+            return new LinearRegressionStrategy(options, symbol, m_walletManager, m_restClient);
         }
 
         private IOptions<TOptions> CreateTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup) 

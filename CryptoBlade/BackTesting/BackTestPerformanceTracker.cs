@@ -25,6 +25,9 @@ namespace CryptoBlade.BackTesting
         private readonly IHostApplicationLifetime m_applicationLifetime;
         private readonly ILogger<BackTestPerformanceTracker> m_logger;
         private readonly IOptions<TradingBotOptions> m_tradingBotOptions;
+        private decimal m_totalLoss;
+        private decimal m_totalProfit;
+        private BalanceInTime m_lastBalance;
 
         public BackTestPerformanceTracker(IOptions<BackTestPerformanceTrackerOptions> options,
             IOptions<TradingBotOptions> tradingBotOptions,
@@ -51,7 +54,8 @@ namespace CryptoBlade.BackTesting
                 m_localTopBalance = balance.WalletBalance!.Value;
                 m_maxDrawDown = 0.0m;
                 var time = m_backTestExchange.CurrentTime;
-                m_balanceHistory.Add(new BalanceInTime(balance, time));
+                m_lastBalance = new BalanceInTime(balance, time);
+                m_balanceHistory.Add(m_lastBalance);
                 m_walletSubscription = await m_backTestExchange.SubscribeToWalletUpdatesAsync(OnWalletUpdate, cancellationToken);
             }
         }
@@ -62,23 +66,29 @@ namespace CryptoBlade.BackTesting
             {
                 var lastBalance = m_balanceHistory.Last();
                 var time = m_backTestExchange.CurrentTime;
+                var profitChange = obj.RealizedPnl!.Value - m_lastBalance.Balance.RealizedPnl!.Value;
+                if (profitChange > 0)
+                    m_totalProfit += profitChange;
+                else
+                    m_totalLoss += Math.Abs(profitChange);
+                m_lastBalance = new BalanceInTime(obj, time);
+                var equityToBalance = obj.Equity!.Value / obj.WalletBalance!.Value;
+                if (equityToBalance < m_lowestEquityToBalance)
+                    m_lowestEquityToBalance = equityToBalance;
+                var walletBalance = obj.WalletBalance!.Value;
+                if (walletBalance > m_localTopBalance)
+                    m_localTopBalance = walletBalance;
+                var drawDown = 1.0m - (walletBalance / m_localTopBalance);
+                if (drawDown > m_maxDrawDown)
+                    m_maxDrawDown = drawDown;
+                if (obj.Equity < 0)
+                {
+                    // game over
+                    m_applicationLifetime.StopApplication();
+                }
                 if (time > lastBalance.Time)
                 {
-                    var equityToBalance = obj.Equity!.Value / obj.WalletBalance!.Value;
-                    if (equityToBalance < m_lowestEquityToBalance)
-                        m_lowestEquityToBalance = equityToBalance;
-                    var walletBalance = obj.WalletBalance!.Value;
-                    if (walletBalance > m_localTopBalance)
-                        m_localTopBalance = walletBalance;
-                    var drawDown = 1.0m - (walletBalance / m_localTopBalance);
-                    if (drawDown > m_maxDrawDown)
-                        m_maxDrawDown = drawDown;
                     m_balanceHistory.Add(new BalanceInTime(obj, time));
-                    if (obj.Equity < 0)
-                    {
-                        // game over
-                        m_applicationLifetime.StopApplication();
-                    }
                 }
             }
         }
@@ -129,17 +139,23 @@ namespace CryptoBlade.BackTesting
                 double dailyGain = Math.Pow((double)finalBalance / (double)initialBalance, 1.0 / numberOfDays) - 1;
                 dailyGainPercent = (decimal)Math.Round(dailyGain * 100.0, 6);
             }
+
+            var totalProfit = m_totalProfit;
+            if (m_totalProfit == 0)
+                totalProfit = 1;
+            decimal lossProfitRatio = m_totalLoss / totalProfit;
             BacktestPerformanceResult result = new BacktestPerformanceResult
             {
                 InitialBalance = initialBalance,
                 FinalEquity = finalEquity,
                 FinalBalance = finalEquity < 0 ? 0 : finalBalance,
                 LowestEquityToBalance = m_lowestEquityToBalance,
-                UnrealizedPnl = m_balanceHistory.Last().Balance.UnrealizedPnl!.Value,
-                RealizedPnl = m_balanceHistory.Last().Balance.RealizedPnl!.Value,
+                UnrealizedPnl = m_lastBalance.Balance.UnrealizedPnl!.Value,
+                RealizedPnl = m_lastBalance.Balance.RealizedPnl!.Value,
                 AverageDailyGainPercent = dailyGainPercent,
                 TotalDays = numberOfDays,
                 MaxDrawDown = m_maxDrawDown,
+                LossProfitRatio = lossProfitRatio,
             };
             var directory = Path.Combine(m_options.Value.BackTestsDirectory, m_testId);
             Directory.CreateDirectory(directory);
@@ -204,6 +220,7 @@ namespace CryptoBlade.BackTesting
         public decimal AverageDailyGainPercent { get; set; }
         public decimal MaxDrawDown { get; set; }
         public int TotalDays { get; set; }
+        public decimal LossProfitRatio { get; set; }
         public OpenPositionWithOrders[] OpenPositionWithOrders { get; set; } = Array.Empty<OpenPositionWithOrders>();
     }
 }

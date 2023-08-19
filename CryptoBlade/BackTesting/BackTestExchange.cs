@@ -622,7 +622,6 @@ namespace CryptoBlade.BackTesting
                             }
                             
                             await UpdateBalanceAsync(profitOrLoss);
-                            m_shortPositions.Remove(symbol);
                         }
 
                         decimal fee = filledOrder.Price!.Value * filledOrder.Quantity * m_options.Value.MakerFeeRate;

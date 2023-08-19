@@ -529,6 +529,34 @@ namespace CryptoBlade.BackTesting
             return hasMoreData;
         }
 
+        public Task ClearPositionsAndOrders(CancellationToken cancel = default)
+        {
+            m_openOrders.Clear();
+            m_longPositions.Clear();
+            m_shortPositions.Clear();
+            return Task.CompletedTask;
+        }
+
+        public async Task MoveFromSpotToFuturesAsync(decimal amount, CancellationToken cancel)
+        {
+            var balance = m_currentBalance;
+            var walletBalance = m_currentBalance.WalletBalance + amount;
+            var equity = walletBalance + balance.UnrealizedPnl;
+            var newBalance = balance with { Equity = equity, WalletBalance = walletBalance };
+            m_currentBalance = newBalance;
+            await NotifyBalanceAsync(newBalance);
+        }
+
+        public async Task MoveFromFuturesToSpotAsync(decimal amount, CancellationToken cancel)
+        {
+            var balance = m_currentBalance;
+            var walletBalance = m_currentBalance.WalletBalance - amount;
+            var equity = walletBalance + balance.UnrealizedPnl;
+            var newBalance = balance with { Equity = equity, WalletBalance = walletBalance };
+            m_currentBalance = newBalance;
+            await NotifyBalanceAsync(newBalance);
+        }
+
         private async Task ProcessPositionsAndOrdersAsync(string symbol, Candle candle)
         {
             List<Order> filledOrders = new List<Order>();
@@ -646,10 +674,29 @@ namespace CryptoBlade.BackTesting
         private async Task UpdateBalanceAsync(decimal profitOrLoss)
         {
             var balance = m_currentBalance;
-            var walletBalance = balance.WalletBalance + profitOrLoss;
+            var walletBalance = balance.WalletBalance ?? 0;
+            if (profitOrLoss < 0)
+            {
+                var absProfitOrLoss = Math.Abs((double)profitOrLoss);
+                profitOrLoss = -(decimal)Math.Min(absProfitOrLoss, (double)walletBalance);
+            }
+            walletBalance += profitOrLoss;
             var realizedProfitAndLoss = balance.RealizedPnl + profitOrLoss;
             var unrealizedProfitAndLoss = CalculateUnrealizedProfitAndLoss();
+            if (unrealizedProfitAndLoss < 0)
+            {
+                var absUnrealizedProfitAndLoss = Math.Abs((double)unrealizedProfitAndLoss);
+                unrealizedProfitAndLoss = -(decimal)Math.Min(absUnrealizedProfitAndLoss, (double)walletBalance);
+            }
             var equity = walletBalance + unrealizedProfitAndLoss;
+            if (equity <= 1.0m) // there should probably be some ratio from exchange
+            {
+                // liquidation
+                equity = 0;
+                walletBalance = 0;
+                unrealizedProfitAndLoss = 0;
+            }
+
             var newBalance = new Balance(equity, walletBalance, unrealizedProfitAndLoss, realizedProfitAndLoss);
             m_currentBalance = newBalance;
             await NotifyBalanceAsync(newBalance);

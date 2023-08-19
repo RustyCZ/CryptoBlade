@@ -22,6 +22,7 @@
         public decimal MakerFeeRate { get; set; } = 0.0002m;
         public decimal TakerFeeRate { get; set; } = 0.00055m;
         public decimal MinProfitRate { get; set; } = 0.0006m;
+        public decimal SpotRebalancingRatio { get; set; } = 0.5m;
         public BackTest BackTest { get; set; } = new BackTest();
         public Unstucking Unstucking { get; set; } = new Unstucking();
         public StrategyOptions Strategies { get; set; } = new StrategyOptions();

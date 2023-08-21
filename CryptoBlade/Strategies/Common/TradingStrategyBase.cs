@@ -505,6 +505,106 @@ namespace CryptoBlade.Strategies.Common
             }
         }
 
+        protected virtual async Task CalculateDynamicQtyAsync()
+        {
+            if (!m_options.Value.EnableRecursiveQtyFactor)
+            {
+                await CalculateDynamicQtyFixedAsync();
+            }
+            else
+            {
+                await CalculateDynamicQtyFactorAsync();
+            }
+        }
+
+        protected virtual Task CalculateDynamicQtyFixedAsync()
+        {
+            var ticker = Ticker;
+            if (ticker == null)
+                return Task.CompletedTask;
+
+            if (!DynamicQtyShort.HasValue || !IsInTrade)
+                DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
+            if (!DynamicQtyLong.HasValue || !IsInTrade)
+                DynamicQtyLong = CalculateDynamicQty(ticker.BestBidPrice, WalletExposureLong);
+
+            return Task.CompletedTask;
+        }
+
+        protected virtual Task CalculateDynamicQtyFactorAsync()
+        {
+            var ticker = Ticker;
+            if (ticker == null)
+                return Task.CompletedTask; 
+            var longPosition = LongPosition; 
+            var shortPosition = ShortPosition; 
+            if (shortPosition == null) 
+                DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
+            else
+            {
+                DynamicQtyShort = shortPosition.Quantity * m_options.Value.QtyFactor;
+                if(SymbolInfo.MinOrderQty > DynamicQtyShort)
+                    DynamicQtyShort = SymbolInfo.MinOrderQty;
+            }
+                
+                
+            if (longPosition == null)
+                DynamicQtyLong = CalculateDynamicQty(ticker.BestBidPrice, WalletExposureLong);
+            else
+            {
+                DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactor;
+                if(SymbolInfo.MinOrderQty > DynamicQtyLong)
+                    DynamicQtyLong = SymbolInfo.MinOrderQty;
+            }
+            
+            return Task.CompletedTask;
+        }
+
+        protected virtual Task CalculateTakeProfitAsync(IList<StrategyIndicator> indicators)
+        {
+            var ticker = Ticker;
+            if(ticker == null)
+                return Task.CompletedTask;
+            var quotes5Min = QuoteQueues[TimeFrame.FiveMinutes].GetQuotes();
+            if (quotes5Min.Length < 1)
+                return Task.CompletedTask;
+            var quotes1Min = QuoteQueues[TimeFrame.OneMinute].GetQuotes();
+            if (quotes1Min.Length < 1)
+                return Task.CompletedTask;
+            var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes1Min);
+            var longPosition = LongPosition;
+            var shortPosition = ShortPosition;
+            decimal? shortTakeProfit = null;
+            if (shortPosition != null)
+                shortTakeProfit = TradingHelpers.CalculateShortTakeProfit(
+                    shortPosition,
+                    SymbolInfo,
+                    quotes5Min,
+                    spread5Min,
+                    ticker,
+                    m_options.Value.FeeRate,
+                    m_options.Value.MinProfitRate);
+            ShortTakeProfitPrice = shortTakeProfit;
+            if (shortTakeProfit.HasValue)
+                indicators.Add(new StrategyIndicator(nameof(IndicatorType.ShortTakeProfit), shortTakeProfit.Value));
+
+            decimal? longTakeProfit = null;
+            if (longPosition != null)
+                longTakeProfit = TradingHelpers.CalculateLongTakeProfit(
+                    longPosition,
+                    SymbolInfo,
+                    quotes5Min,
+                    spread5Min,
+                    ticker,
+                    m_options.Value.FeeRate,
+                    m_options.Value.MinProfitRate);
+            LongTakeProfitPrice = longTakeProfit;
+            if (longTakeProfit.HasValue)
+                indicators.Add(new StrategyIndicator(nameof(IndicatorType.LongTakeProfit), longTakeProfit.Value));
+
+            return Task.CompletedTask;
+        }
+
         protected virtual async Task EvaluateSignalsAsync(CancellationToken cancel)
         {
             HasBuySignal = false;
@@ -524,10 +624,7 @@ namespace CryptoBlade.Strategies.Common
 
             RecommendedMinBalance = SymbolInfo.CalculateMinBalance(ticker.BestAskPrice, minExposure, DcaOrdersCount);
 
-            if (!DynamicQtyShort.HasValue || !IsInTrade)
-                DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
-            if (!DynamicQtyLong.HasValue || !IsInTrade)
-                DynamicQtyLong = CalculateDynamicQty(ticker.BestBidPrice, WalletExposureLong);
+            await CalculateDynamicQtyAsync();
 
             var signalEvaluation = await EvaluateSignalsInnerAsync(cancel);
             HasBuySignal = signalEvaluation.BuySignal;
@@ -541,43 +638,8 @@ namespace CryptoBlade.Strategies.Common
                 new StrategyIndicator(nameof(IndicatorType.Sell), HasSellSignal),
                 new StrategyIndicator(nameof(IndicatorType.SellExtra), HasSellExtraSignal)
             };
-            var quotes5Min = QuoteQueues[TimeFrame.FiveMinutes].GetQuotes();
-            if(quotes5Min.Length < 1)
-                return;
-            var quotes1Min = QuoteQueues[TimeFrame.OneMinute].GetQuotes();
-            if(quotes1Min.Length < 1)
-                return;
-            var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes1Min);
-            var longPosition = LongPosition;
-            var shortPosition = ShortPosition;
-            decimal? shortTakeProfit = null;
-            if(shortPosition != null)
-                shortTakeProfit = TradingHelpers.CalculateShortTakeProfit(
-                    shortPosition, 
-                    SymbolInfo, 
-                    quotes5Min, 
-                    spread5Min, 
-                    ticker,
-                    m_options.Value.FeeRate,
-                    m_options.Value.MinProfitRate);
-            ShortTakeProfitPrice = shortTakeProfit;
-            if(shortTakeProfit.HasValue)
-                indicators.Add(new StrategyIndicator(nameof(IndicatorType.ShortTakeProfit), shortTakeProfit.Value));
-
-            decimal? longTakeProfit = null;
-            if(longPosition != null)
-                longTakeProfit = TradingHelpers.CalculateLongTakeProfit(
-                    longPosition, 
-                    SymbolInfo, 
-                    quotes5Min, 
-                    spread5Min, 
-                    ticker,
-                    m_options.Value.FeeRate,
-                    m_options.Value.MinProfitRate);
-            LongTakeProfitPrice = longTakeProfit;
-            if(longTakeProfit.HasValue)
-                indicators.Add(new StrategyIndicator(nameof(IndicatorType.LongTakeProfit), longTakeProfit.Value));
             indicators.AddRange(signalEvaluation.Indicators);
+            await CalculateTakeProfitAsync(indicators);
             Indicators = indicators.ToArray();
         }
 

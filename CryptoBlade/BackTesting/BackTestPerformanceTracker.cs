@@ -59,7 +59,7 @@ namespace CryptoBlade.BackTesting
             if (m_tradingBotOptions.Value.SpotRebalancingRatio > 0)
             {
                 var futuresBalance = m_localTopBalance * m_tradingBotOptions.Value.SpotRebalancingRatio;
-                m_minFuturesEquity = futuresBalance * 0.01m;
+                m_minFuturesEquity = Math.Min(futuresBalance * 0.01m, 1);
                 m_spotBalance = m_localTopBalance - futuresBalance;
                 m_initialSpot = m_spotBalance;
                 await m_backTestExchange.MoveFromFuturesToSpotAsync(m_spotBalance, cancellationToken);
@@ -110,7 +110,7 @@ namespace CryptoBlade.BackTesting
                 var drawDown = 1.0m - (walletBalance / m_localTopBalance);
                 if (drawDown > m_maxDrawDown)
                     m_maxDrawDown = drawDown;
-                if (obj.WalletBalance < m_minFuturesEquity)
+                if (obj.WalletBalance <= m_minFuturesEquity)
                 {
                     if (m_spotBalance > 0 && m_tradingBotOptions.Value.SpotRebalancingRatio > 0)
                     {
@@ -120,6 +120,7 @@ namespace CryptoBlade.BackTesting
                     }
                     else
                     {
+                        m_balanceHistory.Add(new BalanceInTime(obj, time));
                         await SaveBacktestResultsAsync();
                         m_applicationLifetime.StopApplication();
                     }

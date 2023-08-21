@@ -33,6 +33,9 @@ namespace CryptoBlade.Strategies
             if (string.Equals("LinearRegression", strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateLinearRegressionStrategy(config, symbol);
 
+            if (string.Equals("Tartaglia", strategyName, StringComparison.OrdinalIgnoreCase))
+                return CreateTartagliaStrategy(config, symbol);
+
             return CreateAutoHedgeStrategy(config, symbol);
         }
 
@@ -82,6 +85,20 @@ namespace CryptoBlade.Strategies
             return new LinearRegressionStrategy(options, symbol, m_walletManager, m_restClient);
         }
 
+        private ITradingStrategy CreateTartagliaStrategy(TradingBotOptions config, string symbol)
+        {
+            var options = CreateTradeOptions<TartagliaStrategyOptions>(config, symbol,
+                strategyOptions =>
+                {
+                    strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
+                    strategyOptions.MinimumVolume = config.MinimumVolume;
+                    strategyOptions.ChannelLength = config.Strategies.Tartaglia.ChannelLength;
+                    strategyOptions.StandardDeviation = config.Strategies.Tartaglia.StandardDeviation;
+                    strategyOptions.MinReentryPositionDistance = config.Strategies.Tartaglia.MinReentryPositionDistance;
+                });
+            return new TartagliaStrategy(options, symbol, m_walletManager, m_restClient);
+        }
+
         private IOptions<TOptions> CreateTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup) 
             where TOptions : TradingStrategyBaseOptions, new()
         {
@@ -100,6 +117,8 @@ namespace CryptoBlade.Strategies
                 ForceUnstuckPercentStep = config.Unstucking.ForceUnstuckPercentStep,
                 SlowUnstuckPercentStep = config.Unstucking.SlowUnstuckPercentStep,
                 InitialUntradableDays = initialUntradableDays,
+                QtyFactor = config.QtyFactor,
+                EnableRecursiveQtyFactor = config.EnableRecursiveQtyFactor,
             };
             optionsSetup(options);
             return Options.Create(options);

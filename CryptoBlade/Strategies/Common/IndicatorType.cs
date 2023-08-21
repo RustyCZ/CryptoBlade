@@ -22,5 +22,6 @@
         MainTimeFrameVolume,
         MfiTrend,
         EriTrend,
+        LinearRegressionPrice,
     }
 }

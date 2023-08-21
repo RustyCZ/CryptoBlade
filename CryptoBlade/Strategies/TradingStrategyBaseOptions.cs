@@ -25,5 +25,9 @@ namespace CryptoBlade.Strategies
         public decimal ForceUnstuckPercentStep { get; set; } = 0.1m;
 
         public int InitialUntradableDays { get; set; }
+
+        public decimal QtyFactor { get; set; } = 1.0m;
+
+        public bool EnableRecursiveQtyFactor { get; set; }
     }
 }

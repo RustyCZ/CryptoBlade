@@ -1,4 +1,5 @@
 using System.Reflection;
+using Binance.Net.Clients;
 using Bybit.Net;
 using CryptoBlade.BackTesting;
 using CryptoBlade.Configuration;
@@ -12,7 +13,9 @@ using CryptoExchange.Net.Authentication;
 using CryptoExchange.Net.Objects;
 using Microsoft.Extensions.Options;
 using Bybit.Net.Clients;
+using CryptoBlade.BackTesting.Binance;
 using CryptoBlade.BackTesting.Bybit;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace CryptoBlade
 {
@@ -36,9 +39,8 @@ namespace CryptoBlade
             debugView = string.Join(Environment.NewLine, debugViewLines);
 
             var tradingBotOptions = builder.Configuration.GetSection("TradingBot").Get<TradingBotOptions>();
-            TradingMode tradingMode = tradingBotOptions!.TradingMode;
             var exchangeAccount =
-                tradingBotOptions.Accounts.FirstOrDefault(x => string.Equals(x.Name, tradingBotOptions.AccountName, StringComparison.Ordinal));
+                tradingBotOptions!.Accounts.FirstOrDefault(x => string.Equals(x.Name, tradingBotOptions.AccountName, StringComparison.Ordinal));
             string apiKey = exchangeAccount?.ApiKey ?? string.Empty;
             string apiSecret = exchangeAccount?.ApiSecret ?? string.Empty;
             bool hasApiCredentials = !string.IsNullOrWhiteSpace(apiKey) && !string.IsNullOrWhiteSpace(apiSecret);
@@ -124,15 +126,32 @@ namespace CryptoBlade
                 x.HistoricalDataDirectory = historicalDataDirectory;
             });
             builder.Services.AddSingleton<IBackTestDataDownloader, BackTestDataDownloader>();
-            builder.Services.AddSingleton<IHistoricalDataDownloader>(provider =>
+            builder.Services.AddSingleton(provider =>
             {
                 var historicalDataStorage = provider.GetRequiredService<IHistoricalDataStorage>();
-                var logger = ApplicationLogging.CreateLogger<BybitHistoricalDataDownloader>();
-                var cbRestClient = CreateUnauthorizedBybitClient();
-                BybitHistoricalDataDownloader downloader = new BybitHistoricalDataDownloader(
-                    historicalDataStorage,
-                    logger,
-                    cbRestClient);
+                IHistoricalDataDownloader downloader;
+                switch (tradingBotOptions.BackTest.DataSource)
+                {
+                    case DataSource.Bybit:
+                        var bybitLogger = ApplicationLogging.CreateLogger<BybitHistoricalDataDownloader>();
+                        var bybitClient = CreateUnauthorizedBybitClient();
+                        downloader = new BybitHistoricalDataDownloader(
+                            historicalDataStorage,
+                            bybitLogger,
+                            bybitClient);
+                        break;
+                    case DataSource.Binance:
+                        var binanceLogger = ApplicationLogging.CreateLogger<BinanceHistoricalDataDownloader>();
+                        var binanceClient = CreateUnauthorizedBinanceClient();
+                        downloader = new BinanceHistoricalDataDownloader(
+                            historicalDataStorage,
+                            binanceLogger,
+                            binanceClient);
+                        break;
+                    default:
+                        throw new ArgumentOutOfRangeException();
+                }
+                
                 return downloader;
             });
             builder.Services.AddSingleton<IHistoricalDataStorage, ProtoHistoricalDataStorage>();
@@ -160,6 +179,16 @@ namespace CryptoBlade
             var cbRestClient = new BybitCbFuturesRestClient(cbRestClientOptions,
                 bybit,
                 ApplicationLogging.CreateLogger<BybitCbFuturesRestClient>());
+
+            return cbRestClient;
+        }
+
+        private static BinanceCbFuturesRestClient CreateUnauthorizedBinanceClient()
+        {
+            var binance = new BinanceRestClient();
+            var cbRestClient = new BinanceCbFuturesRestClient(
+                ApplicationLogging.CreateLogger<BinanceCbFuturesRestClient>(),
+                binance);
 
             return cbRestClient;
         }

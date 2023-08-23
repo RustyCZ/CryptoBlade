@@ -1,6 +1,9 @@
-﻿using Bybit.Net.Clients;
+﻿using Binance.Net.Clients;
+using Bybit.Net.Clients;
 using CryptoBlade.BackTesting.Bybit;
 using CryptoBlade.BackTesting;
+using CryptoBlade.BackTesting.Binance;
+using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
 using Microsoft.Extensions.Options;
@@ -15,26 +18,61 @@ namespace CryptoBlade.Tests.BackTesting
         {
         }
 
-        [Fact]
-        public async Task AllBackTestDataShouldBeDownloaded()
+        private BybitHistoricalDataDownloader CreateBybitHistoricalDataDownloader(IHistoricalDataStorage storage)
         {
-            var options = Options.Create(new ProtoHistoricalDataStorageOptions
-            {
-                Directory = "HistoricalData",
-            });
             var bybit = new BybitRestClient();
             var cbRestClientOptions = Options.Create(new BybitCbFuturesRestClientOptions
             {
                 PlaceOrderAttempts = 5
             });
-            var cbRestClient = new BybitCbFuturesRestClient(cbRestClientOptions, 
+            var cbRestClient = new BybitCbFuturesRestClient(cbRestClientOptions,
                 bybit,
                 ApplicationLogging.CreateLogger<BybitCbFuturesRestClient>());
-            var storage = new ProtoHistoricalDataStorage(options);
             var downloader = new BybitHistoricalDataDownloader(
-                storage, 
-                ApplicationLogging.CreateLogger<BybitHistoricalDataDownloader>(), 
+                storage,
+                ApplicationLogging.CreateLogger<BybitHistoricalDataDownloader>(),
                 cbRestClient);
+
+            return downloader;
+        }
+
+        private BinanceHistoricalDataDownloader CreateBinanceHistoricalDataDownloader(IHistoricalDataStorage storage)
+        {
+            var binance = new BinanceRestClient();
+            var cbRestClient = new BinanceCbFuturesRestClient(
+                ApplicationLogging.CreateLogger<BinanceCbFuturesRestClient>(),
+                binance);
+            var downloader = new BinanceHistoricalDataDownloader(
+                storage,
+                ApplicationLogging.CreateLogger<BinanceHistoricalDataDownloader>(),
+                cbRestClient);
+
+            return downloader;
+        }
+
+        [Fact]
+        public async Task AllBackTestDataShouldBeDownloaded()
+        {
+            var dataSource = DataSource.Bybit;
+            var options = Options.Create(new ProtoHistoricalDataStorageOptions
+            {
+                Directory = "HistoricalData",
+            });
+            var storage = new ProtoHistoricalDataStorage(options);
+            IHistoricalDataDownloader downloader;
+            // ReSharper disable UnreachableSwitchCaseDueToIntegerAnalysis
+            switch (dataSource)
+            {
+                case DataSource.Bybit:
+                    downloader = CreateBybitHistoricalDataDownloader(storage);
+                    break;
+                case DataSource.Binance: 
+                    downloader = CreateBinanceHistoricalDataDownloader(storage);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+            // ReSharper restore UnreachableSwitchCaseDueToIntegerAnalysis
             var start = new DateTime(2023, 8, 1);
             var end = new DateTime(2023, 8, 11);
             var symbols = new[]

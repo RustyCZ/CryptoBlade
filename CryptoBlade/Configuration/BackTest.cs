@@ -15,5 +15,7 @@
         public string ResultDetailedFileName { get; set; } = "result_detailed.json";
 
         public int InitialUntradableDays { get; set; } = 30;
+
+        public DataSource DataSource { get; set; } = DataSource.Bybit;
     }
 }

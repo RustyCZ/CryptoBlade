@@ -1,22 +1,18 @@
-﻿using System.Globalization;
-using System.IO.Compression;
-using System.Net;
-using CryptoBlade.BackTesting.Model;
-using CryptoBlade.Exchanges;
+﻿using CryptoBlade.Exchanges;
 using CryptoBlade.Models;
-using CsvHelper;
 using Nito.AsyncEx;
+using CryptoBlade.BackTesting.Model;
 
-namespace CryptoBlade.BackTesting.Bybit
+namespace CryptoBlade.BackTesting.Binance
 {
-    public class BybitHistoricalDataDownloader : IHistoricalDataDownloader
+    public class BinanceHistoricalDataDownloader : IHistoricalDataDownloader
     {
         private readonly IHistoricalDataStorage m_historicalDataStorage;
-        private readonly ILogger<BybitHistoricalDataDownloader> m_logger;
+        private readonly ILogger<BinanceHistoricalDataDownloader> m_logger;
         private readonly ICbFuturesRestClient m_cbFuturesRestClient;
 
-        public BybitHistoricalDataDownloader(IHistoricalDataStorage historicalDataStorage, 
-            ILogger<BybitHistoricalDataDownloader> logger,
+        public BinanceHistoricalDataDownloader(IHistoricalDataStorage historicalDataStorage,
+            ILogger<BinanceHistoricalDataDownloader> logger,
             ICbFuturesRestClient cbFuturesRestClient)
         {
             m_historicalDataStorage = historicalDataStorage;
@@ -52,11 +48,7 @@ namespace CryptoBlade.BackTesting.Bybit
                             try
                             {
                                 m_logger.LogInformation($"Downloading {symbol} {day:yyyy-MM-dd}");
-                                Trade[] trades;
-                                if (dataInclude.IncludeTrades)
-                                    trades = await DownloadDayAsync(symbol, day);
-                                else
-                                    trades = Array.Empty<Trade>();
+                                Trade[] trades = Array.Empty<Trade>();
                                 var tfs = new[]
                                 {
                                     TimeFrame.OneMinute,
@@ -79,7 +71,7 @@ namespace CryptoBlade.BackTesting.Bybit
                                         candles.AddRange(klines2);
                                     }
                                 }
-                                
+
                                 using var l = await asyncLock.LockAsync();
                                 missingDaysSet.Remove(day);
                                 bool flush = missingDaysSet.Count == 0;
@@ -107,37 +99,6 @@ namespace CryptoBlade.BackTesting.Bybit
                     m_logger.LogError(e, $"Failed to download {symbol} from {from} to {to}");
                 }
             }
-        }
-
-        private async Task<Trade[]> DownloadDayAsync(string symbol, DateTime current)
-        {
-            string url = $"https://public.bybit.com/trading/{symbol}/{symbol}{current:yyyy-MM-dd}.csv.gz";
-            using var client = new HttpClient();
-            client.DefaultRequestHeaders.TryAddWithoutValidation("User-Agent", "CryptoBlade");
-            var response = await client.GetAsync(url);
-            if (response.IsSuccessStatusCode)
-            {
-                await using var stream = await response.Content.ReadAsStreamAsync();
-                await using var gzip = new GZipStream(stream, CompressionMode.Decompress);
-                using var reader = new StreamReader(gzip);
-                using var csv = new CsvReader(reader, CultureInfo.InvariantCulture);
-                var records = csv.GetRecords<BybitHistoricalTick>();
-                var result = records
-                    .Select(x => new Trade
-                    {
-                        TimestampDateTime = x.TimestampDateTime,
-                        Size = x.Size,
-                        Price = x.Price
-                    }).ToArray();
-                return result;
-            }
-
-            if (response.StatusCode == HttpStatusCode.NotFound)
-            {
-                return Array.Empty<Trade>();
-            }
-
-            throw new Exception($"Failed to download {url} {response.StatusCode}");
         }
     }
 }

@@ -42,6 +42,8 @@ services:
         - CB_TradingBot__BackTest__End=2023-08-19
         - CB_TradingBot__BackTest__ResultFileName=result.json
         - CB_TradingBot__BackTest__ResultDetailedFileName=result_detailed.json
+        - CB_TradingBot__BackTest__DataSource=Binance
+        - CB_TradingBot__BackTest__InitialUntradableDays=-1000
         - CB_TradingBot__Strategies__Tartaglia__StandardDeviation=2.5
         - CB_TradingBot__Strategies__Tartaglia__ChannelLength=66
         - CB_TradingBot__Strategies__Tartaglia__MinReentryPositionDistance=0.03

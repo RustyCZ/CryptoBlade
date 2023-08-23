@@ -65,9 +65,11 @@ namespace CryptoBlade.BackTesting.Binance
                                     foreach (TimeFrame timeFrame in tfs)
                                     {
                                         var firstHalfDay = day.Date.AddHours(12);
-                                        var klines1 = await m_cbFuturesRestClient.GetKlinesAsync(symbol, timeFrame, day, firstHalfDay.AddMinutes(-1), cancel);
+                                        var klines1 = await m_cbFuturesRestClient.GetKlinesAsync(symbol, timeFrame, day,
+                                            firstHalfDay.AddMinutes(-1), cancel);
                                         candles.AddRange(klines1);
-                                        var klines2 = await m_cbFuturesRestClient.GetKlinesAsync(symbol, timeFrame, firstHalfDay, day.AddDays(1).AddMinutes(-1), cancel);
+                                        var klines2 = await m_cbFuturesRestClient.GetKlinesAsync(symbol, timeFrame,
+                                            firstHalfDay, day.AddDays(1).AddMinutes(-1), cancel);
                                         candles.AddRange(klines2);
                                     }
                                 }
@@ -84,6 +86,11 @@ namespace CryptoBlade.BackTesting.Binance
                                 };
                                 await m_historicalDataStorage.StoreAsync(symbol, historicalDayData, flush, cancel);
                                 m_logger.LogInformation($"Downloaded {symbol} {day:yyyy-MM-dd}");
+                                await Task.Delay(TimeSpan.FromSeconds(10), cancel);
+                            }
+                            catch
+                            {
+                                await Task.Delay(TimeSpan.FromMinutes(1), cancel);
                             }
                             finally
                             {
@@ -96,6 +103,7 @@ namespace CryptoBlade.BackTesting.Binance
                 }
                 catch (Exception e)
                 {
+                    await Task.Delay(TimeSpan.FromMinutes(1), cancel);
                     m_logger.LogError(e, $"Failed to download {symbol} from {from} to {to}");
                 }
             }

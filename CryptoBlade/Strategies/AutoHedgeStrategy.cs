@@ -100,6 +100,8 @@ namespace CryptoBlade.Strategies
                 bool shouldLong = false;
                 bool shouldAddToShort = false;
                 bool shouldAddToLong = false;
+                bool hasMinShortPriceDistance = false;
+                bool hasMinLongPriceDistance = false;
                 if (ticker != null 
                     && ma3HighLast != null && ma3HighLast.Sma.HasValue
                     && ma3LowLast != null && ma3LowLast.Sma.HasValue
@@ -128,6 +130,20 @@ namespace CryptoBlade.Strategies
                                 && hasMinSpread
                                 && canBeTraded;
 
+                if (ticker != null && longPosition != null)
+                {
+                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistance);
+                    if (ticker.BestBidPrice < rebuyPrice)
+                        hasMinLongPriceDistance = hasBuySignal;
+                }
+
+                if (ticker != null && shortPosition != null)
+                {
+                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistance);
+                    if (ticker.BestAskPrice > resellPrice)
+                        hasMinShortPriceDistance = hasSellSignal;
+                }
+
                 hasBuyExtraSignal = hasMinVolume 
                                     && shouldAddToLong 
                                     && hasAllRequiredMa 
@@ -136,6 +152,7 @@ namespace CryptoBlade.Strategies
                                     && longPosition != null
                                     && ticker != null
                                     && ticker.BestBidPrice < longPosition.AveragePrice
+                                    && hasMinLongPriceDistance
                                     && canBeTraded;
 
                 hasSellExtraSignal = hasMinVolume 
@@ -145,7 +162,8 @@ namespace CryptoBlade.Strategies
                                      && hasMinSpread
                                      && shortPosition != null
                                      && ticker != null
-                                     && ticker.BestAskPrice > shortPosition.AveragePrice
+                                     && ticker.BestAskPrice > shortPosition.AveragePrice 
+                                     && hasMinShortPriceDistance
                                      && canBeTraded;
 
                 if (hasAllRequiredMa)

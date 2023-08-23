@@ -46,6 +46,7 @@ namespace CryptoBlade.Strategies
                 {
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
+                    strategyOptions.MinReentryPositionDistance = config.Strategies.AutoHedge.MinReentryPositionDistance;
                 });
             return new AutoHedgeStrategy(options, symbol, m_walletManager, m_restClient);
         }

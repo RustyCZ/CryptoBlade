@@ -5,5 +5,7 @@
         public decimal MinimumVolume { get; set; }
 
         public decimal MinimumPriceDistance { get; set; }
+
+        public decimal MinReentryPositionDistance { get; set; }
     }
 }

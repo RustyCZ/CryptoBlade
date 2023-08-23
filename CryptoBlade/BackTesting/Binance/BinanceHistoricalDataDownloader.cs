@@ -91,6 +91,7 @@ namespace CryptoBlade.BackTesting.Binance
                             catch
                             {
                                 await Task.Delay(TimeSpan.FromMinutes(1), cancel);
+                                throw;
                             }
                             finally
                             {

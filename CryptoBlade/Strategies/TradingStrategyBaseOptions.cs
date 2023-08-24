@@ -29,5 +29,7 @@ namespace CryptoBlade.Strategies
         public decimal QtyFactor { get; set; } = 1.0m;
 
         public bool EnableRecursiveQtyFactor { get; set; }
+
+        public bool IgnoreInconsistency { get; set; }
     }
 }

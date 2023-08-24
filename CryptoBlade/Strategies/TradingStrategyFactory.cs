@@ -120,6 +120,7 @@ namespace CryptoBlade.Strategies
                 InitialUntradableDays = initialUntradableDays,
                 QtyFactor = config.QtyFactor,
                 EnableRecursiveQtyFactor = config.EnableRecursiveQtyFactor,
+                IgnoreInconsistency = isBackTest,
             };
             optionsSetup(options);
             return Options.Create(options);

@@ -36,6 +36,9 @@ namespace CryptoBlade.Strategies
             if (string.Equals("Tartaglia", strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateTartagliaStrategy(config, symbol);
 
+            if (string.Equals("Mona", strategyName, StringComparison.OrdinalIgnoreCase))
+                return CreateMonaStrategy(config, symbol);
+
             return CreateAutoHedgeStrategy(config, symbol);
         }
 
@@ -98,6 +101,20 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinReentryPositionDistance = config.Strategies.Tartaglia.MinReentryPositionDistance;
                 });
             return new TartagliaStrategy(options, symbol, m_walletManager, m_restClient);
+        }
+
+        private ITradingStrategy CreateMonaStrategy(TradingBotOptions config, string symbol)
+        {
+            var options = CreateTradeOptions<MonaStrategyOptions>(config, symbol,
+                strategyOptions =>
+                {
+                    strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
+                    strategyOptions.MinimumVolume = config.MinimumVolume;
+                    strategyOptions.BandwidthCoefficient = config.Strategies.Mona.BandwidthCoefficient;
+                    strategyOptions.MinReentryPositionDistance = config.Strategies.Mona.MinReentryPositionDistance;
+                    strategyOptions.ClusteringLength = config.Strategies.Mona.ClusteringLength;
+                });
+            return new MonaStrategy(options, symbol, m_walletManager, m_restClient);
         }
 
         private IOptions<TOptions> CreateTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup) 

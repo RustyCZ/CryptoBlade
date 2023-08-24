@@ -131,5 +131,15 @@ namespace CryptoBlade.Helpers
                 return null;
             }
         }
+
+        public static bool CrossesBellow(this Quote quote, double priceLevel)
+        {
+            return (double)quote.High > priceLevel && (double)quote.Low < priceLevel;
+        }
+
+        public static bool CrossesAbove(this Quote quote, double priceLevel)
+        {
+            return (double)quote.High < priceLevel && (double)quote.Low > priceLevel;
+        }
     }
 }

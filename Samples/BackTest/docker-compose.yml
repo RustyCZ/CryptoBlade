@@ -13,12 +13,12 @@ services:
     environment:
         - CB_TradingBot__Accounts__0__ApiKey=
         - CB_TradingBot__Accounts__0__ApiSecret=
-        - CB_TradingBot__StrategyName=AutoHedge
+        - CB_TradingBot__StrategyName=Mona
         - CB_TradingBot__MaxRunningStrategies=10
         - CB_TradingBot__WalletExposureLong=2.0
         - CB_TradingBot__WalletExposureShort=2.0
         - CB_TradingBot__ForceMinQty=false
-        - CB_TradingBot__QtyFactor=1.2
+        - CB_TradingBot__QtyFactor=2.0
         - CB_TradingBot__EnableRecursiveQtyFactor=true
         - CB_TradingBot__TradingMode=DynamicBackTest
         - CB_TradingBot__DcaOrdersCount=1000
@@ -29,7 +29,7 @@ services:
         - CB_TradingBot__DynamicBotCount__MaxShortStrategies=4
         - CB_TradingBot__DynamicBotCount__MaxDynamicStrategyOpenPerStep=10
         - CB_TradingBot__DynamicBotCount__Step=0.00:01:00
-        - CB_TradingBot__Unstucking__Enabled=true
+        - CB_TradingBot__Unstucking__Enabled=false
         - CB_TradingBot__Unstucking__SlowUnstuckThresholdPercent=-0.3
         - CB_TradingBot__Unstucking__SlowUnstuckPositionThresholdPercent=-0.05
         - CB_TradingBot__Unstucking__SlowUnstuckPercentStep=0.2
@@ -37,7 +37,7 @@ services:
         - CB_TradingBot__Unstucking__ForceUnstuckPositionThresholdPercent=-0.2
         - CB_TradingBot__Unstucking__ForceUnstuckPercentStep=0.1
         - CB_TradingBot__Unstucking__ForceKillTheWorst=false
-        - CB_TradingBot__BackTest__InitialBalance=1000
+        - CB_TradingBot__BackTest__InitialBalance=5000
         - CB_TradingBot__BackTest__Start=2023-01-01
         - CB_TradingBot__BackTest__End=2023-08-19
         - CB_TradingBot__BackTest__ResultFileName=result.json
@@ -48,6 +48,9 @@ services:
         - CB_TradingBot__Strategies__Tartaglia__ChannelLength=66
         - CB_TradingBot__Strategies__Tartaglia__MinReentryPositionDistance=0.03
         - CB_TradingBot__Strategies__AutoHedge__MinReentryPositionDistance=0.01
+        - CB_TradingBot__Strategies__Mona__MinReentryPositionDistance=0.02
+        - CB_TradingBot__Strategies__Mona__ClusteringLength=480
+        - CB_TradingBot__Strategies__Mona__BandwidthCoefficient=0.3
         - CB_TradingBot__Whitelist__0=ARBUSDT
         - CB_TradingBot__Whitelist__1=OPUSDT
         - CB_TradingBot__Whitelist__2=XRPUSDT

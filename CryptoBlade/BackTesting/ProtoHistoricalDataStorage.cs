@@ -45,10 +45,18 @@ namespace CryptoBlade.BackTesting
         {
             start = start.Date;
             var days = new List<DateTime>();
+            var directory = GetSymbolDirectory(symbol, start);
+            HashSet<string> files = new HashSet<string>();
+            if (Directory.Exists(directory))
+            {
+                var foundFiles = Directory.GetFiles(directory, "*.pb");
+                foreach (var foundFile in foundFiles)
+                    files.Add(foundFile);
+            }
             for (var day = start; day <= end; day = day.AddDays(1))
             {
                 var fileName = GetSymbolFileName(symbol, day);
-                if (!File.Exists(fileName))
+                if (!files.Contains(fileName))
                     days.Add(day);
             }
             return Task.FromResult(days.ToArray());

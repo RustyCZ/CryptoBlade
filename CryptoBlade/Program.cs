@@ -52,6 +52,14 @@ namespace CryptoBlade
             builder.Services.AddHostedService<TradingHostedService>();
             builder.Services.Configure<TradingBotOptions>(builder.Configuration.GetSection("TradingBot"));
             builder.Services.AddSingleton<ITradingStrategyFactory, TradingStrategyFactory>();
+            builder.Services.AddLogging(options =>
+            {
+                options.AddSimpleConsole(o =>
+                {
+                    o.UseUtcTimestamp = true;
+                    o.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
+                });
+            });
 
             bool isBackTest = tradingBotOptions.IsBackTest();
 
@@ -228,27 +236,19 @@ namespace CryptoBlade
                 builder.Services.AddSingleton<IWalletManager, NullWalletManager>();
 
             builder.Services.AddBybit(
-                    restOptions =>
-                    {
-                        restOptions.V5Options.RateLimitingBehaviour = RateLimitingBehaviour.Wait;
-                        if (hasApiCredentials)
-                            restOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
-                        restOptions.ReceiveWindow = TimeSpan.FromSeconds(10);
-                        restOptions.AutoTimestamp = true;
-                        restOptions.TimestampRecalculationInterval = TimeSpan.FromSeconds(10);
-                    },
-                    socketClientOptions =>
-                    {
-                        if (hasApiCredentials)
-                            socketClientOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
-                    })
-                .AddLogging(options =>
+                restOptions =>
                 {
-                    options.AddSimpleConsole(o =>
-                    {
-                        o.UseUtcTimestamp = true;
-                        o.TimestampFormat = "yyyy-MM-dd HH:mm:ss ";
-                    });
+                    restOptions.V5Options.RateLimitingBehaviour = RateLimitingBehaviour.Wait;
+                    if (hasApiCredentials)
+                        restOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
+                    restOptions.ReceiveWindow = TimeSpan.FromSeconds(10);
+                    restOptions.AutoTimestamp = true;
+                    restOptions.TimestampRecalculationInterval = TimeSpan.FromSeconds(10);
+                },
+                socketClientOptions =>
+                {
+                    if (hasApiCredentials)
+                        socketClientOptions.V5Options.ApiCredentials = new ApiCredentials(apiKey, apiSecret);
                 });
 
             builder.Services.AddSingleton<ICbFuturesRestClient, BybitCbFuturesRestClient>();

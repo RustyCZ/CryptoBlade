@@ -96,9 +96,12 @@ namespace CryptoBlade.Strategies
                 {
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
-                    strategyOptions.ChannelLength = config.Strategies.Tartaglia.ChannelLength;
-                    strategyOptions.StandardDeviation = config.Strategies.Tartaglia.StandardDeviation;
-                    strategyOptions.MinReentryPositionDistance = config.Strategies.Tartaglia.MinReentryPositionDistance;
+                    strategyOptions.ChannelLengthLong = config.Strategies.Tartaglia.ChannelLengthLong;
+                    strategyOptions.ChannelLengthShort = config.Strategies.Tartaglia.ChannelLengthShort;
+                    strategyOptions.StandardDeviationLong = config.Strategies.Tartaglia.StandardDeviationLong;
+                    strategyOptions.StandardDeviationShort = config.Strategies.Tartaglia.StandardDeviationShort;
+                    strategyOptions.MinReentryPositionDistanceLong = config.Strategies.Tartaglia.MinReentryPositionDistanceLong;
+                    strategyOptions.MinReentryPositionDistanceShort = config.Strategies.Tartaglia.MinReentryPositionDistanceShort;
                 });
             return new TartagliaStrategy(options, symbol, m_walletManager, m_restClient);
         }

@@ -46,9 +46,12 @@ services:
         - CB_TradingBot__BackTest__ResultDetailedFileName=result_detailed.json
         - CB_TradingBot__BackTest__DataSource=Binance
         - CB_TradingBot__BackTest__InitialUntradableDays=-2000
-        - CB_TradingBot__Strategies__Tartaglia__StandardDeviation=2.5
-        - CB_TradingBot__Strategies__Tartaglia__ChannelLength=66
-        - CB_TradingBot__Strategies__Tartaglia__MinReentryPositionDistance=0.03
+        - CB_TradingBot__Strategies__Tartaglia__StandardDeviationLong=2.5
+        - CB_TradingBot__Strategies__Tartaglia__StandardDeviationShort=2.5
+        - CB_TradingBot__Strategies__Tartaglia__ChannelLengthLong=66
+        - CB_TradingBot__Strategies__Tartaglia__ChannelLengthShort=66
+        - CB_TradingBot__Strategies__Tartaglia__MinReentryPositionDistanceLong=0.03
+        - CB_TradingBot__Strategies__Tartaglia__MinReentryPositionDistanceShort=0.03
         - CB_TradingBot__Strategies__AutoHedge__MinReentryPositionDistance=0.01
         - CB_TradingBot__Strategies__Mona__MinReentryPositionDistanceLong=0.02
         - CB_TradingBot__Strategies__Mona__MinReentryPositionDistanceShort=0.025

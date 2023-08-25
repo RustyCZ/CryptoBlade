@@ -17,7 +17,7 @@ namespace CryptoBlade.Strategies
             string symbol,
             IWalletManager walletManager,
             ICbFuturesRestClient cbFuturesRestClient) 
-            : base(options, symbol, GetRequiredTimeFrames(options.Value.ChannelLength), walletManager, cbFuturesRestClient)
+            : base(options, symbol, GetRequiredTimeFrames(Math.Max(options.Value.ChannelLengthLong, options.Value.ChannelLengthShort)), walletManager, cbFuturesRestClient)
         {
             m_options = options;
         }
@@ -41,13 +41,15 @@ namespace CryptoBlade.Strategies
         {
             List<StrategyIndicator> takeProfitIndicators = new List<StrategyIndicator>();
             await base.CalculateTakeProfitAsync(takeProfitIndicators);
-            var linearRegressionPriceObj =
-                indicators.FirstOrDefault(x => string.Equals(x.Name, nameof(IndicatorType.LinearRegressionPrice)));
-            if (linearRegressionPriceObj.Value is decimal linearRegressionPrice)
+            var linearRegressionPriceLongObj =
+                indicators.FirstOrDefault(x => string.Equals(x.Name, nameof(IndicatorType.LinearRegressionPriceLong)));
+            var linearRegressionPriceShortObj =
+                indicators.FirstOrDefault(x => string.Equals(x.Name, nameof(IndicatorType.LinearRegressionPriceShort)));
+            if (linearRegressionPriceLongObj.Value is decimal linearRegressionPriceLong)
             {
-                if (LongTakeProfitPrice.HasValue && LongTakeProfitPrice < linearRegressionPrice)
+                if (LongTakeProfitPrice.HasValue && LongTakeProfitPrice < linearRegressionPriceLong)
                 {
-                    LongTakeProfitPrice = linearRegressionPrice;
+                    LongTakeProfitPrice = linearRegressionPriceLong;
                     indicators.Add(new StrategyIndicator(nameof(IndicatorType.LongTakeProfit), LongTakeProfitPrice));
                 }
                 else
@@ -59,11 +61,13 @@ namespace CryptoBlade.Strategies
                         indicators.Add(takeProfitIndicator);
                     }
                 }
-                    
-                
-                if(ShortTakeProfitPrice.HasValue && ShortTakeProfitPrice > linearRegressionPrice)
+            }
+
+            if (linearRegressionPriceShortObj.Value is decimal linearRegressionPriceShort)
+            {
+                if (ShortTakeProfitPrice.HasValue && ShortTakeProfitPrice > linearRegressionPriceShort)
                 {
-                    ShortTakeProfitPrice = linearRegressionPrice;
+                    ShortTakeProfitPrice = linearRegressionPriceShort;
                     indicators.Add(new StrategyIndicator(nameof(IndicatorType.ShortTakeProfit), ShortTakeProfitPrice));
                 }
                 else
@@ -101,24 +105,24 @@ namespace CryptoBlade.Strategies
                 bool hasBasicConditions = canBeTraded && hasMinSpread && hasMinVolume;
                 if (hasBasicConditions)
                 {
-                    OrdinaryLeastSquares ols = new OrdinaryLeastSquares();
-                    double[] priceData = new double[quotes.Length];
-                    double[] xAxis = new double[quotes.Length];
-                    for (int i = 0; i < quotes.Length; i++)
+                    var expectedShortPrice = CalculateExpectedPrice(quotes, m_options.Value.ChannelLengthShort);
+                    var expectedLongPrice = expectedShortPrice;
+                    if (m_options.Value.ChannelLengthLong != m_options.Value.ChannelLengthShort) 
+                        expectedLongPrice = CalculateExpectedPrice(quotes, m_options.Value.ChannelLengthLong);
+
+                    if (expectedLongPrice.ExpectedPrice.HasValue && expectedShortPrice.StandardDeviation.HasValue)
                     {
-                        var averagePrice = (quotes[i].Open + quotes[i].Close) / 2.0m;
-                        priceData[i] = (double)averagePrice;
-                        xAxis[i] = i;
+                        var lowerChannel = expectedLongPrice.ExpectedPrice.Value - m_options.Value.StandardDeviationLong * expectedShortPrice.StandardDeviation;
+                        bellowChannel = (double)ticker.LastPrice < lowerChannel;
+                        indicators.Add(new StrategyIndicator(nameof(IndicatorType.LinearRegressionPriceLong), (decimal)expectedLongPrice.ExpectedPrice.Value));
                     }
-                    var lr = ols.Learn(xAxis, priceData.ToArray());
-                    var intercept = lr.Intercept;
-                    var slope = lr.Slope;
-                    var expectedPrice = intercept + slope * quotes.Length;
-                    var lowerChannel = expectedPrice - m_options.Value.StandardDeviation * StandardDeviation(priceData);
-                    bellowChannel = (double)ticker.LastPrice < lowerChannel;
-                    var upperChannel = expectedPrice + m_options.Value.StandardDeviation * StandardDeviation(priceData);
-                    aboveChannel = (double)ticker.LastPrice > upperChannel;
-                    indicators.Add(new StrategyIndicator(nameof(IndicatorType.LinearRegressionPrice), (decimal)expectedPrice));
+
+                    if (expectedShortPrice.ExpectedPrice.HasValue && expectedShortPrice.StandardDeviation.HasValue)
+                    {
+                        var upperChannel = expectedShortPrice.ExpectedPrice.Value + m_options.Value.StandardDeviationShort * expectedShortPrice.StandardDeviation;
+                        aboveChannel = (double)ticker.LastPrice > upperChannel;
+                        indicators.Add(new StrategyIndicator(nameof(IndicatorType.LinearRegressionPriceShort), (decimal)expectedShortPrice.ExpectedPrice.Value));
+                    }
                 }
 
                 hasBuySignal = hasMinVolume
@@ -135,14 +139,14 @@ namespace CryptoBlade.Strategies
                 var shortPosition = ShortPosition;
                 if (longPosition != null && hasBuySignal)
                 {
-                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistance);
+                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistanceLong);
                     if (ticker.BestBidPrice < rebuyPrice)
                         hasBuyExtraSignal = hasBuySignal;
                 }
 
                 if (shortPosition != null && hasSellSignal)
                 {
-                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistance);
+                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistanceShort);
                     if (ticker.BestAskPrice > resellPrice)
                         hasSellExtraSignal = hasSellSignal;
                 }
@@ -155,11 +159,37 @@ namespace CryptoBlade.Strategies
             return Task.FromResult(new SignalEvaluation(hasBuySignal, hasSellSignal, hasBuyExtraSignal, hasSellExtraSignal, indicators.ToArray()));
         }
 
+        private LinearChannelPrice CalculateExpectedPrice(Quote[] quotes, int channelLength)
+        {
+            int quotesLength = quotes.Length;
+            int skip = quotesLength - channelLength;
+            if (skip < 0)
+                return new LinearChannelPrice(null, null); // not enough quotes
+            OrdinaryLeastSquares ols = new OrdinaryLeastSquares();
+            double[] priceData = new double[channelLength];
+            double[] xAxis = new double[channelLength];
+            for (int i = 0; i < channelLength; i++)
+            {
+                var averagePrice = (quotes[i + skip].Open + quotes[i + skip].Close) / 2.0m;
+                priceData[i] = (double)averagePrice;
+                xAxis[i] = i;
+            }
+            var lr = ols.Learn(xAxis, priceData.ToArray());
+            var intercept = lr.Intercept;
+            var slope = lr.Slope;
+            var expectedPrice = intercept + slope * quotes.Length;
+            var standardDeviation = StandardDeviation(priceData);
+
+            return new LinearChannelPrice(expectedPrice, standardDeviation);
+        }
+
         private static double StandardDeviation(double[] data)
         {
             double mean = data.Sum() / data.Length;
             double sumOfSquares = data.Select(x => (x - mean) * (x - mean)).Sum();
             return Math.Sqrt(sumOfSquares / data.Length);
         }
+
+        private readonly record struct LinearChannelPrice(double? ExpectedPrice, double? StandardDeviation);
     }
 }

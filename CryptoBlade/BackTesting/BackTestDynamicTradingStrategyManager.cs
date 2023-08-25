@@ -38,7 +38,10 @@ namespace CryptoBlade.BackTesting
         protected override async Task StrategyExecutionNextStep(CancellationToken cancel)
         {
             bool hasData = await m_backTestExchange.AdvanceTimeAsync(cancel);
-            if(!hasData)
+            if (!hasData)
+                m_hostApplicationLifetime.StopApplication();
+            var balances = await m_backTestExchange.GetBalancesAsync(cancel);
+            if (!balances.WalletBalance.HasValue || balances.WalletBalance.Value <= 0)
                 m_hostApplicationLifetime.StopApplication();
         }
 

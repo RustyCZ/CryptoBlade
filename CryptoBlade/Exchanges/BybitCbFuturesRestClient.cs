@@ -257,6 +257,46 @@ namespace CryptoBlade.Exchanges
             return false;
         }
 
+        public async Task<bool> PlaceMarketBuyOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
+                .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
+                    category: m_category,
+                    symbol: symbol,
+                    side: OrderSide.Buy,
+                    type: NewOrderType.Market,
+                    quantity: quantity,
+                    price: price,
+                    positionIdx: PositionIdx.BuyHedgeMode,
+                    reduceOnly: false,
+                    ct: cancel));
+            if (!buyOrderRes.GetResultOrError(out _, out _))
+                return false;
+
+            return true;
+        }
+
+        public async Task<bool> PlaceMarketSellOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            var sellOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
+                .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
+                    category: m_category,
+                    symbol: symbol,
+                    side: OrderSide.Sell,
+                    type: NewOrderType.Market,
+                    quantity: quantity,
+                    price: price,
+                    positionIdx: PositionIdx.SellHedgeMode,
+                    reduceOnly: false,
+                    timeInForce: TimeInForce.PostOnly,
+                    ct: cancel));
+
+            if (!sellOrderRes.GetResultOrError(out _, out _))
+                return false;
+
+            return true;
+        }
+
         public async Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force,
             CancellationToken cancel = default)
         {

@@ -139,7 +139,7 @@ namespace CryptoBlade.Helpers
 
         public static bool CrossesAbove(this Quote quote, double priceLevel)
         {
-            return (double)quote.High < priceLevel && (double)quote.Low > priceLevel;
+            return (double)quote.Low < priceLevel && (double)quote.High > priceLevel;
         }
     }
 }

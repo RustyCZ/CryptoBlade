@@ -96,6 +96,30 @@ namespace CryptoBlade.BackTesting
 
         public async Task<bool> PlaceLimitBuyOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
         {
+            bool res = await PlaceBuyOrderAsync(symbol, quantity, price, m_options.Value.MakerFeeRate);
+            return res;
+        }
+
+        public async Task<bool> PlaceLimitSellOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            bool res = await PlaceSellOrderAsync(symbol, quantity, price, m_options.Value.MakerFeeRate);
+            return res;
+        }
+
+        public async Task<bool> PlaceMarketBuyOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            bool res = await PlaceBuyOrderAsync(symbol, quantity, price, m_options.Value.TakerFeeRate);
+            return res;
+        }
+
+        public async Task<bool> PlaceMarketSellOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            bool res = await PlaceSellOrderAsync(symbol, quantity, price, m_options.Value.TakerFeeRate);
+            return res;
+        }
+
+        private async Task<bool> PlaceBuyOrderAsync(string symbol, decimal quantity, decimal price, decimal feeRate)
+        {
             Order order;
             using (await m_lock.LockAsync())
             {
@@ -119,7 +143,7 @@ namespace CryptoBlade.BackTesting
                     ValueRemaining = 0,
                     CreateTime = m_currentTime,
                 };
-                decimal fee = quantity * price * m_options.Value.MakerFeeRate;
+                decimal fee = quantity * price * feeRate;
                 await AddFeeToBalanceAsync(-fee);
                 if (!m_longPositions.TryGetValue(symbol, out var openPosition))
                 {
@@ -137,7 +161,7 @@ namespace CryptoBlade.BackTesting
             return true;
         }
 
-        public async Task<bool> PlaceLimitSellOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        private async Task<bool> PlaceSellOrderAsync(string symbol, decimal quantity, decimal price, decimal feeRate)
         {
             Order order;
             using (await m_lock.LockAsync())
@@ -162,7 +186,7 @@ namespace CryptoBlade.BackTesting
                     ValueRemaining = 0,
                     CreateTime = m_currentTime,
                 };
-                decimal fee = quantity * price * m_options.Value.MakerFeeRate;
+                decimal fee = quantity * price * feeRate;
                 await AddFeeToBalanceAsync(-fee);
                 if (!m_shortPositions.TryGetValue(symbol, out var openPosition))
                 {

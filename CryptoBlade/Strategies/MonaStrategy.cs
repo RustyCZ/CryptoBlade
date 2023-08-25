@@ -59,6 +59,8 @@ namespace CryptoBlade.Strategies
             get { return m_options.Value.ForceMinQty; }
         }
 
+        protected override bool UseMarketOrdersForEntries => true;
+
         protected override Task<SignalEvaluation> EvaluateSignalsInnerAsync(CancellationToken cancel)
         {
             var quotes = QuoteQueues[TimeFrame.OneMinute].GetQuotes();
@@ -115,6 +117,7 @@ namespace CryptoBlade.Strategies
                             crossesAbovePriceLevel = tradingLevels.Any(x => lastQuote.CrossesAbove(x));
                     }
                 }
+
                 hasBuySignal = hasMinVolume
                                && hasMinSpread
                                && canBeTraded
@@ -131,14 +134,14 @@ namespace CryptoBlade.Strategies
                 var shortPosition = ShortPosition;
                 if (longPosition != null && hasBuySignal)
                 {
-                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistance);
+                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistanceLong);
                     if (ticker.BestBidPrice < rebuyPrice)
                         hasBuyExtraSignal = hasBuySignal;
                 }
 
                 if (shortPosition != null && hasSellSignal)
                 {
-                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistance);
+                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistanceShort);
                     if (ticker.BestAskPrice > resellPrice)
                         hasSellExtraSignal = hasSellSignal;
                 }

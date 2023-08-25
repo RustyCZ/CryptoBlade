@@ -48,6 +48,16 @@ namespace CryptoBlade.Exchanges
             throw new NotImplementedException();
         }
 
+        public Task<bool> PlaceMarketBuyOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<bool> PlaceMarketSellOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        {
+            throw new NotImplementedException();
+        }
+
         public Task<bool> PlaceLongTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force,
             CancellationToken cancel = default)
         {

@@ -36,6 +36,18 @@ namespace CryptoBlade.Exchanges
             decimal price,
             CancellationToken cancel = default);
 
+        Task<bool> PlaceMarketBuyOrderAsync(
+            string symbol,
+            decimal quantity,
+            decimal price,
+            CancellationToken cancel = default);
+
+        Task<bool> PlaceMarketSellOrderAsync(
+            string symbol,
+            decimal quantity,
+            decimal price,
+            CancellationToken cancel = default);
+
         Task<bool> PlaceLongTakeProfitOrderAsync(
             string symbol,
             decimal qty,

@@ -111,7 +111,8 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
                     strategyOptions.BandwidthCoefficient = config.Strategies.Mona.BandwidthCoefficient;
-                    strategyOptions.MinReentryPositionDistance = config.Strategies.Mona.MinReentryPositionDistance;
+                    strategyOptions.MinReentryPositionDistanceLong = config.Strategies.Mona.MinReentryPositionDistanceLong;
+                    strategyOptions.MinReentryPositionDistanceShort = config.Strategies.Mona.MinReentryPositionDistanceShort;
                     strategyOptions.ClusteringLength = config.Strategies.Mona.ClusteringLength;
                 });
             return new MonaStrategy(options, symbol, m_walletManager, m_restClient);

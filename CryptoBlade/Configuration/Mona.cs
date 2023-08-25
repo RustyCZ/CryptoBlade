@@ -2,7 +2,9 @@
 {
     public class Mona
     {
-        public decimal MinReentryPositionDistance { get; set; } = 0.02m;
+        public decimal MinReentryPositionDistanceLong { get; set; } = 0.02m;
+
+        public decimal MinReentryPositionDistanceShort { get; set; } = 0.05m;
 
         public int ClusteringLength { get; set; } = 480;
 

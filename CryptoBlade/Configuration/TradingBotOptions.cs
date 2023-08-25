@@ -30,5 +30,6 @@
         public BackTest BackTest { get; set; } = new BackTest();
         public Unstucking Unstucking { get; set; } = new Unstucking();
         public StrategyOptions Strategies { get; set; } = new StrategyOptions();
+        public CriticalMode CriticalMode { get; set; } = new CriticalMode();
     }
 }

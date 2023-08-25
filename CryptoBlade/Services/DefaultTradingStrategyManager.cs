@@ -90,7 +90,7 @@ namespace CryptoBlade.Services
                             if (inTradeSymbols.Any())
                             {
                                 var executeParams =
-                                    inTradeSymbols.ToDictionary(x => x, _ => new ExecuteParams(true, true, false, false));
+                                    inTradeSymbols.ToDictionary(x => x, _ => new ExecuteParams(true, true, true, true,false, false));
                                 await PrepareStrategyExecutionAsync(executionTasks, inTradeSymbols, executeParams,
                                     cancel);
                             }
@@ -99,7 +99,7 @@ namespace CryptoBlade.Services
                             if (strategiesWithMostVolume.Any())
                             {
                                 var executeParams =
-                                    strategiesWithMostVolume.ToDictionary(x => x, _ => new ExecuteParams(true, true, false, false));
+                                    strategiesWithMostVolume.ToDictionary(x => x, _ => new ExecuteParams(true, true, true, true, false, false));
                                 await PrepareStrategyExecutionAsync(executionTasks, strategiesWithMostVolume,
                                     executeParams, cancel);
                             }

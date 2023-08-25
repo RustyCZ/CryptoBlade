@@ -46,6 +46,10 @@ namespace CryptoBlade.Strategies.Common
 
         TimeFrameWindow[] RequiredTimeFrameWindows { get; }
 
+        decimal? CurrentExposureLong { get;  }
+        
+        decimal? CurrentExposureShort { get; }
+
         Task UpdateTradingStateAsync(Position? longPosition, Position? shortPosition, Order[] openOrders, CancellationToken cancel);
 
         Task SetupSymbolAsync(SymbolInfo symbol, CancellationToken cancel);

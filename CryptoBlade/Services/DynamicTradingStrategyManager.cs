@@ -202,13 +202,48 @@ namespace CryptoBlade.Services
                                 .Distinct()
                                 .ToArray();
 
+                            bool criticalLong = m_options.Value.CriticalMode.EnableCriticalModeLong 
+                                                && strategyState.TotalLongExposure > m_options.Value.CriticalMode.WalletExposureThresholdLong;
+                            bool criticalShort = m_options.Value.CriticalMode.EnableCriticalModeShort 
+                                                 && strategyState.TotalShortExposure > m_options.Value.CriticalMode.WalletExposureThresholdShort;
+
                             // by default already trading strategies can only maintain existing positions
                             Dictionary<string, ExecuteParams> executeParams =
                                 inTradeSymbols.ToDictionary(x => x, x => new ExecuteParams(
                                     false, 
                                     false, 
+                                    !criticalLong,
+                                    !criticalShort,
                                     unstuckingLong.Contains(x), 
                                     unstuckingShort.Contains(x)));
+                            
+                            if (criticalLong)
+                            {
+                                // select highest exposure strategy to continue trading
+                                var highestExposure = Strategies.Values
+                                    .Where(x => x.IsInLongTrade && x.CurrentExposureLong.HasValue)
+                                    .MaxBy(x => x.CurrentExposureLong!.Value);
+                                if (highestExposure != null)
+                                {
+                                    executeParams.TryGetValue(highestExposure.Symbol, out var existingParams);
+                                    executeParams[highestExposure.Symbol] =
+                                        existingParams with { AllowExtraLong = true };
+                                }
+                            }
+
+                            if (criticalShort)
+                            {
+                                // select highest exposure strategy to continue trading
+                                var highestExposure = Strategies.Values
+                                    .Where(x => x.IsInShortTrade && x.CurrentExposureShort.HasValue)
+                                    .MaxBy(x => x.CurrentExposureShort!.Value);
+                                if (highestExposure != null)
+                                {
+                                    executeParams.TryGetValue(highestExposure.Symbol, out var existingParams);
+                                    executeParams[highestExposure.Symbol] =
+                                        existingParams with { AllowExtraShort = true };
+                                }
+                            }
 
                             var inLongTradeSymbols = Strategies.Values.Where(x => x.IsInLongTrade).ToArray();
                             var inShortTradeSymbols = Strategies.Values.Where(x => x.IsInShortTrade).ToArray();
@@ -223,11 +258,13 @@ namespace CryptoBlade.Services
                             bool canAddLongPositions = remainingLongSlots > 0
                                                        && strategyState.TotalWalletLongExposure.HasValue
                                                        && strategyState.TotalWalletLongExposure.Value <
-                                                       dynamicBotCount.TargetLongExposure;
+                                                       dynamicBotCount.TargetLongExposure
+                                                       && !criticalLong;
                             bool canAddShortPositions = remainingShortSlots > 0
                                                         && strategyState.TotalWalletShortExposure.HasValue
                                                         && strategyState.TotalWalletShortExposure.Value <
-                                                        dynamicBotCount.TargetShortExposure;
+                                                        dynamicBotCount.TargetShortExposure
+                                                        && !criticalShort;
                             m_logger.LogDebug(
                                 "Can add long positions: '{CanAddLongPositions}', can add short positions: '{CanAddShortPositions}'.",
                                 canAddLongPositions,

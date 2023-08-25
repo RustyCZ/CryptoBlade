@@ -88,6 +88,8 @@ namespace CryptoBlade.Strategies.Common
         public DateTime? LastCandleShortOrder { get; set; }
         public DateTime? LastCandleLongUnstuckOrder { get; set; }
         public DateTime? LastCandleShortUnstuckOrder { get; set; }
+        public decimal? CurrentExposureLong { get; protected set; }
+        public decimal? CurrentExposureShort { get; protected set; }
         protected virtual bool UseMarketOrdersForEntries => false;
 
         public Task UpdateTradingStateAsync(Position? longPosition, Position? shortPosition, Order[] orders, CancellationToken cancel)
@@ -102,15 +104,21 @@ namespace CryptoBlade.Strategies.Common
             IsInShortTrade = shortPosition != null || SellOrders.Length > 0;
             UnrealizedLongPnlPercent = null;
             UnrealizedShortPnlPercent = null;
+            CurrentExposureLong = null;
+            CurrentExposureShort = null;
             var balance = m_walletManager.Contract;
             if (longPosition != null && Ticker != null && balance.WalletBalance.HasValue)
             {
+                var longValue = longPosition.Quantity * Ticker.LastPrice;
+                CurrentExposureLong = longValue / balance.WalletBalance.Value;
                 var longPositionValue = (Ticker.LastPrice - longPosition.AveragePrice) * longPosition.Quantity;
                 UnrealizedLongPnlPercent = longPositionValue / balance.WalletBalance.Value;
             }
 
             if (shortPosition != null && Ticker != null && balance.WalletBalance.HasValue)
             {
+                var shortValue = shortPosition.Quantity * Ticker.LastPrice;
+                CurrentExposureShort = shortValue / balance.WalletBalance.Value;
                 var shortPositionValue = (shortPosition.AveragePrice - Ticker.LastPrice) * shortPosition.Quantity;
                 UnrealizedShortPnlPercent = shortPositionValue / balance.WalletBalance.Value;
             }
@@ -311,7 +319,8 @@ namespace CryptoBlade.Strategies.Common
                     && dynamicQtyLong.HasValue
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleLongOrder)
                     && LongFundingWithinLimit(ticker)
-                    && !executeParams.LongUnstucking)
+                    && !executeParams.LongUnstucking
+                    && executeParams.AllowExtraLong)
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open long position");
                     if (UseMarketOrdersForEntries)
@@ -329,7 +338,8 @@ namespace CryptoBlade.Strategies.Common
                     && dynamicQtyShort.HasValue
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleShortOrder)
                     && ShortFundingWithinLimit(ticker)
-                    && !executeParams.ShortUnstucking)
+                    && !executeParams.ShortUnstucking
+                    && executeParams.AllowExtraShort)
                 {
                     m_logger.LogDebug($"{Name}: {Symbol} trying to add to open short position");
                     if (UseMarketOrdersForEntries)

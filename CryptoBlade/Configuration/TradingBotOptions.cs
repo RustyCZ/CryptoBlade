@@ -17,8 +17,10 @@
         public string StrategyName { get; set; } = "AutoHedge";
         public TradingMode TradingMode { get; set; } = TradingMode.Normal;
         public bool ForceMinQty { get; set; } = true;
-        public decimal QtyFactor { get; set; } = 1.0m;
-        public bool EnableRecursiveQtyFactor { get; set; }
+        public decimal QtyFactorLong { get; set; } = 1.0m;
+        public decimal QtyFactorShort { get; set; } = 1.0m;
+        public bool EnableRecursiveQtyFactorLong { get; set; }
+        public bool EnableRecursiveQtyFactorShort { get; set; }
         public int PlaceOrderAttempts { get; set; } = 3;
         public decimal MaxAbsFundingRate { get; set; } = 0.0004m;
         public decimal MakerFeeRate { get; set; } = 0.0002m;

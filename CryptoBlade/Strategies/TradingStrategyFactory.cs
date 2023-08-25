@@ -136,8 +136,10 @@ namespace CryptoBlade.Strategies
                 ForceUnstuckPercentStep = config.Unstucking.ForceUnstuckPercentStep,
                 SlowUnstuckPercentStep = config.Unstucking.SlowUnstuckPercentStep,
                 InitialUntradableDays = initialUntradableDays,
-                QtyFactor = config.QtyFactor,
-                EnableRecursiveQtyFactor = config.EnableRecursiveQtyFactor,
+                EnableRecursiveQtyFactorLong = config.EnableRecursiveQtyFactorLong,
+                EnableRecursiveQtyFactorShort = config.EnableRecursiveQtyFactorShort,
+                QtyFactorLong = config.QtyFactorLong,
+                QtyFactorShort = config.QtyFactorShort,
                 IgnoreInconsistency = isBackTest,
             };
             optionsSetup(options);

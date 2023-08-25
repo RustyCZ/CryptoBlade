@@ -26,9 +26,13 @@ namespace CryptoBlade.Strategies
 
         public int InitialUntradableDays { get; set; }
 
-        public decimal QtyFactor { get; set; } = 1.0m;
-
-        public bool EnableRecursiveQtyFactor { get; set; }
+        public decimal QtyFactorLong { get; set; } = 1.0m;
+        
+        public decimal QtyFactorShort { get; set; } = 1.0m;
+        
+        public bool EnableRecursiveQtyFactorLong { get; set; }
+        
+        public bool EnableRecursiveQtyFactorShort { get; set; }
 
         public bool IgnoreInconsistency { get; set; }
     }

@@ -520,17 +520,18 @@ namespace CryptoBlade.Strategies.Common
 
         protected virtual async Task CalculateDynamicQtyAsync()
         {
-            if (!m_options.Value.EnableRecursiveQtyFactor)
-            {
-                await CalculateDynamicQtyFixedAsync();
-            }
+            if (!m_options.Value.EnableRecursiveQtyFactorLong)
+                await CalculateDynamicQtyLongFixedAsync();
             else
-            {
-                await CalculateDynamicQtyFactorAsync();
-            }
+                await CalculateDynamicQtyLongFactorAsync();
+            
+            if(!m_options.Value.EnableRecursiveQtyFactorShort)
+                await CalculateDynamicQtyShortFixedAsync();
+            else
+                await CalculateDynamicQtyShortFactorAsync();
         }
 
-        protected virtual Task CalculateDynamicQtyFixedAsync()
+        protected virtual Task CalculateDynamicQtyShortFixedAsync()
         {
             var ticker = Ticker;
             if (ticker == null)
@@ -538,38 +539,56 @@ namespace CryptoBlade.Strategies.Common
 
             if (!DynamicQtyShort.HasValue || !IsInTrade)
                 DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
+
+            return Task.CompletedTask;
+        }
+
+        protected virtual Task CalculateDynamicQtyLongFixedAsync()
+        {
+            var ticker = Ticker;
+            if (ticker == null)
+                return Task.CompletedTask;
+
             if (!DynamicQtyLong.HasValue || !IsInTrade)
                 DynamicQtyLong = CalculateDynamicQty(ticker.BestBidPrice, WalletExposureLong);
 
             return Task.CompletedTask;
         }
 
-        protected virtual Task CalculateDynamicQtyFactorAsync()
+        protected virtual Task CalculateDynamicQtyLongFactorAsync()
         {
             var ticker = Ticker;
             if (ticker == null)
                 return Task.CompletedTask; 
             var longPosition = LongPosition; 
-            var shortPosition = ShortPosition; 
-            if (shortPosition == null) 
-                DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
-            else
-            {
-                DynamicQtyShort = shortPosition.Quantity * m_options.Value.QtyFactor;
-                if(SymbolInfo.MinOrderQty > DynamicQtyShort)
-                    DynamicQtyShort = SymbolInfo.MinOrderQty;
-            }
-                
                 
             if (longPosition == null)
                 DynamicQtyLong = CalculateDynamicQty(ticker.BestBidPrice, WalletExposureLong);
             else
             {
-                DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactor;
+                DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactorLong;
                 if(SymbolInfo.MinOrderQty > DynamicQtyLong)
                     DynamicQtyLong = SymbolInfo.MinOrderQty;
             }
             
+            return Task.CompletedTask;
+        }
+
+        protected virtual Task CalculateDynamicQtyShortFactorAsync()
+        {
+            var ticker = Ticker;
+            if (ticker == null)
+                return Task.CompletedTask;
+            var shortPosition = ShortPosition;
+            if (shortPosition == null)
+                DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
+            else
+            {
+                DynamicQtyShort = shortPosition.Quantity * m_options.Value.QtyFactorShort;
+                if (SymbolInfo.MinOrderQty > DynamicQtyShort)
+                    DynamicQtyShort = SymbolInfo.MinOrderQty;
+            }
+
             return Task.CompletedTask;
         }
 

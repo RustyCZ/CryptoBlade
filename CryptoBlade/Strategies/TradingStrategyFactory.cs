@@ -117,6 +117,7 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MinReentryPositionDistanceLong = config.Strategies.Mona.MinReentryPositionDistanceLong;
                     strategyOptions.MinReentryPositionDistanceShort = config.Strategies.Mona.MinReentryPositionDistanceShort;
                     strategyOptions.ClusteringLength = config.Strategies.Mona.ClusteringLength;
+                    strategyOptions.MfiRsiLookback = config.Strategies.Mona.MfiRsiLookback;
                 });
             return new MonaStrategy(options, symbol, m_walletManager, m_restClient);
         }

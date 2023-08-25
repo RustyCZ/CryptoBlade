@@ -97,11 +97,13 @@ namespace CryptoBlade.Helpers
             }
         }
 
-        public static Trend GetMfiTrend(Quote[] quotes)
+        public static Trend GetMfiTrend(Quote[] quotes, int lookbackPeriod = 100)
         {
-            const int lookbackPeriod = 100;
-            var mfi = quotes.GetMfi().ToArray();
-            var rsi = quotes.GetRsi().ToArray();
+            int requiredQuotes = 14 + lookbackPeriod;
+            int skip = quotes.Length - requiredQuotes;
+            var quotesToUse = quotes.Skip(skip).ToArray();
+            var mfi = quotesToUse.GetMfi().ToArray();
+            var rsi = quotesToUse.GetRsi().ToArray();
             int lookback = Math.Min(Math.Min(mfi.Length, rsi.Length), lookbackPeriod);
             for (int i = 1; i < (lookback + 1); i++)
             {

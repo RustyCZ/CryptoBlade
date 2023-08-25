@@ -9,6 +9,7 @@ using CryptoBlade.Strategies.Common;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
 using Accord.Math;
+using Accord.Statistics.Models.Regression.Linear;
 using Skender.Stock.Indicators;
 
 namespace CryptoBlade.Strategies
@@ -20,16 +21,16 @@ namespace CryptoBlade.Strategies
 
         public MonaStrategy(IOptions<MonaStrategyOptions> options,
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient)
-            : base(options, symbol, GetRequiredTimeFrames(options.Value.ClusteringLength), walletManager, restClient)
+            : base(options, symbol, GetRequiredTimeFrames(options.Value.ClusteringLength, options.Value.MfiRsiLookback), walletManager, restClient)
         {
             m_options = options;
         }
 
-        private static TimeFrameWindow[] GetRequiredTimeFrames(int clusteringLength)
+        private static TimeFrameWindow[] GetRequiredTimeFrames(int clusteringLength, int mfiRsiLookBack)
         {
             return new[]
             {
-                new TimeFrameWindow(TimeFrame.OneMinute, Math.Max(c_candlePeriod, clusteringLength), true),
+                new TimeFrameWindow(TimeFrame.OneMinute, Math.Max(c_candlePeriod + mfiRsiLookBack, clusteringLength), true),
                 new TimeFrameWindow(TimeFrame.FiveMinutes, 15, false),
             };
         }
@@ -79,13 +80,8 @@ namespace CryptoBlade.Strategies
                 var volume = TradeSignalHelpers.VolumeInQuoteCurrency(lastQuote);
                 bool hasMinSpread = spread5Min > m_options.Value.MinimumPriceDistance;
                 bool hasMinVolume = volume >= m_options.Value.MinimumVolume;
-                var mfi = quotes.GetMfi();
-                var lastMfi = mfi.LastOrDefault();
-                var rsi = quotes.GetRsi();
-                var lastRsi = rsi.LastOrDefault();
-                var mfiRsiBuy = TradeSignalHelpers.IsMfiRsiBuy(lastMfi, lastRsi, lastQuote);
-                var mfiRsiSell = TradeSignalHelpers.IsMfiRsiSell(lastMfi, lastRsi, lastQuote);
-                bool hasBasicConditions = canBeTraded && hasMinSpread && hasMinVolume && (mfiRsiSell || mfiRsiBuy);
+                var mfiRsiTrend = TradeSignalHelpers.GetMfiTrend(quotes, m_options.Value.MfiRsiLookback);
+                bool hasBasicConditions = canBeTraded && hasMinSpread && hasMinVolume && (mfiRsiTrend == Trend.Long || mfiRsiTrend == Trend.Short);
                 bool crossesBellowPriceLevel = false;
                 bool crossesAbovePriceLevel = false;
                 if (hasBasicConditions)
@@ -122,13 +118,13 @@ namespace CryptoBlade.Strategies
                                && hasMinSpread
                                && canBeTraded
                                && crossesBellowPriceLevel
-                               && mfiRsiBuy;
+                               && mfiRsiTrend == Trend.Long;
 
                 hasSellSignal = hasMinVolume
                                 && hasMinSpread
                                 && canBeTraded
                                 && crossesAbovePriceLevel
-                                && mfiRsiSell;
+                                && mfiRsiTrend == Trend.Short;
 
                 var longPosition = LongPosition;
                 var shortPosition = ShortPosition;

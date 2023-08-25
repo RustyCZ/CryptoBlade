@@ -13,5 +13,7 @@
         public int ClusteringLength { get; set; } = 480;
 
         public double BandwidthCoefficient { get; set; } = 0.3;
+
+        public int MfiRsiLookback { get; set; } = 5;
     }
 }

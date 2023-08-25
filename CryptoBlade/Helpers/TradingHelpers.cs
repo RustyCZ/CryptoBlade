@@ -1,4 +1,5 @@
-﻿using CryptoBlade.Models;
+﻿using Accord.Statistics.Models.Regression.Linear;
+using CryptoBlade.Models;
 using CryptoBlade.Strategies.Wallet;
 using Skender.Stock.Indicators;
 
@@ -140,6 +141,37 @@ namespace CryptoBlade.Helpers
         public static bool CrossesAbove(this Quote quote, double priceLevel)
         {
             return (double)quote.Low < priceLevel && (double)quote.High > priceLevel;
+        }
+
+        public static LinearChannelPrice CalculateExpectedPrice(Quote[] quotes, int channelLength)
+        {
+            int quotesLength = quotes.Length;
+            int skip = quotesLength - channelLength;
+            if (skip < 0)
+                return new LinearChannelPrice(null, null); // not enough quotes
+            OrdinaryLeastSquares ols = new OrdinaryLeastSquares();
+            double[] priceData = new double[channelLength];
+            double[] xAxis = new double[channelLength];
+            for (int i = 0; i < channelLength; i++)
+            {
+                var averagePrice = (quotes[i + skip].Open + quotes[i + skip].Close) / 2.0m;
+                priceData[i] = (double)averagePrice;
+                xAxis[i] = i;
+            }
+            var lr = ols.Learn(xAxis, priceData.ToArray());
+            var intercept = lr.Intercept;
+            var slope = lr.Slope;
+            var expectedPrice = intercept + slope * quotes.Length;
+            var standardDeviation = StandardDeviation(priceData);
+
+            return new LinearChannelPrice(expectedPrice, standardDeviation);
+        }
+
+        private static double StandardDeviation(double[] data)
+        {
+            double mean = data.Sum() / data.Length;
+            double sumOfSquares = data.Select(x => (x - mean) * (x - mean)).Sum();
+            return Math.Sqrt(sumOfSquares / data.Length);
         }
     }
 }

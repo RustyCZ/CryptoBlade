@@ -576,9 +576,23 @@ namespace CryptoBlade.Strategies.Common
                 DynamicQtyLong = CalculateDynamicQty(ticker.BestBidPrice, WalletExposureLong);
             else
             {
-                DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactorLong;
-                if(SymbolInfo.MinOrderQty > DynamicQtyLong)
-                    DynamicQtyLong = SymbolInfo.MinOrderQty;
+                var walletBalance = m_walletManager.Contract.WalletBalance;
+                var positionValue = longPosition.Quantity * longPosition.AveragePrice;
+                var remainingExposure = (m_options.Value.WalletExposureLong * walletBalance) - positionValue;
+                if (remainingExposure <= 0)
+                    DynamicQtyLong = null;
+                else
+                {
+                    var remainingQty = remainingExposure / ticker.BestBidPrice;
+                    DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactorShort;
+                    if (DynamicQtyLong > remainingQty)
+                        DynamicQtyLong = remainingQty;
+                    var symbolInfo = SymbolInfo;
+                    if (symbolInfo.QtyStep.HasValue)
+                        DynamicQtyLong -= (DynamicQtyLong % symbolInfo.QtyStep.Value);
+                    if (SymbolInfo.MinOrderQty > DynamicQtyLong)
+                        DynamicQtyLong = SymbolInfo.MinOrderQty;
+                }
             }
             
             return Task.CompletedTask;
@@ -594,9 +608,23 @@ namespace CryptoBlade.Strategies.Common
                 DynamicQtyShort = CalculateDynamicQty(ticker.BestAskPrice, WalletExposureShort);
             else
             {
-                DynamicQtyShort = shortPosition.Quantity * m_options.Value.QtyFactorShort;
-                if (SymbolInfo.MinOrderQty > DynamicQtyShort)
-                    DynamicQtyShort = SymbolInfo.MinOrderQty;
+                var walletBalance = m_walletManager.Contract.WalletBalance;
+                var positionValue = shortPosition.Quantity * shortPosition.AveragePrice;
+                var remainingExposure = (m_options.Value.WalletExposureShort * walletBalance) - positionValue;
+                if(remainingExposure <= 0)
+                    DynamicQtyShort = null;
+                else
+                {
+                    var remainingQty = remainingExposure / ticker.BestAskPrice;
+                    DynamicQtyShort = shortPosition.Quantity * m_options.Value.QtyFactorShort;
+                    if (DynamicQtyShort > remainingQty)
+                        DynamicQtyShort = remainingQty;
+                    var symbolInfo = SymbolInfo;
+                    if(symbolInfo.QtyStep.HasValue)
+                        DynamicQtyShort -= (DynamicQtyShort % symbolInfo.QtyStep.Value);
+                    if (SymbolInfo.MinOrderQty > DynamicQtyShort)
+                        DynamicQtyShort = SymbolInfo.MinOrderQty;
+                }
             }
 
             return Task.CompletedTask;

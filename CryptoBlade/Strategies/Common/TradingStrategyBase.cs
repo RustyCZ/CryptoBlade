@@ -28,6 +28,12 @@ namespace CryptoBlade.Strategies.Common
         {
             m_logger = ApplicationLogging.CreateLogger(GetType().FullName ?? nameof(TradingStrategyBase));
             RequiredTimeFrameWindows = requiredTimeFrames;
+            if (options.Value.StrategySelectPreference == StrategySelectPreference.NormalizedAverageTrueRange)
+            {
+                RequiredTimeFrameWindows = RequiredTimeFrameWindows
+                    .Append(new TimeFrameWindow(TimeFrame.OneHour, options.Value.NormalizedAverageTrueRangePeriod, false))
+                    .ToArray();
+            }
             m_walletManager = walletManager;
             m_cbFuturesRestClient = cbFuturesRestClient;
             m_options = options;
@@ -584,7 +590,7 @@ namespace CryptoBlade.Strategies.Common
                 else
                 {
                     var remainingQty = remainingExposure / ticker.BestBidPrice;
-                    DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactorShort;
+                    DynamicQtyLong = longPosition.Quantity * m_options.Value.QtyFactorLong;
                     if (DynamicQtyLong > remainingQty)
                         DynamicQtyLong = remainingQty;
                     var symbolInfo = SymbolInfo;
@@ -709,6 +715,19 @@ namespace CryptoBlade.Strategies.Common
                 new StrategyIndicator(nameof(IndicatorType.SellExtra), HasSellExtraSignal)
             };
             indicators.AddRange(signalEvaluation.Indicators);
+            if (m_options.Value.StrategySelectPreference == StrategySelectPreference.NormalizedAverageTrueRange)
+            {
+                var quotes = QuoteQueues[TimeFrame.OneHour].GetQuotes();
+                var atr = quotes.GetAtr();
+                var lastAtr = atr.LastOrDefault();
+                if (lastAtr != null && lastAtr.Atr.HasValue)
+                {
+                    var normalizedAtr = (lastAtr.Atr.Value / (double)ticker.BestAskPrice) * 100;
+                    normalizedAtr = Math.Round(normalizedAtr, 6);
+                    indicators.Add(new StrategyIndicator(nameof(IndicatorType.NormalizedAverageTrueRange), (decimal)normalizedAtr));
+                }
+            }
+
             await CalculateTakeProfitAsync(indicators);
             Indicators = indicators.ToArray();
         }

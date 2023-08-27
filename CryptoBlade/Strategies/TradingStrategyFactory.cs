@@ -145,6 +145,8 @@ namespace CryptoBlade.Strategies
                 QtyFactorLong = config.QtyFactorLong,
                 QtyFactorShort = config.QtyFactorShort,
                 IgnoreInconsistency = isBackTest,
+                NormalizedAverageTrueRangePeriod = config.NormalizedAverageTrueRangePeriod,
+                StrategySelectPreference = config.StrategySelectPreference,
             };
             optionsSetup(options);
             return Options.Create(options);

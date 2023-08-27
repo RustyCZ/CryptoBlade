@@ -274,6 +274,22 @@ namespace CryptoBlade.Services
                             foreach (string inTradeSymbol in inTradeSymbols)
                                 tradeSymbols.Add(inTradeSymbol);
 
+                            string strategySelectIndicator;
+                            decimal minSelectValue;
+                            switch (m_options.Value.StrategySelectPreference)
+                            {
+                                case StrategySelectPreference.Volume:
+                                    strategySelectIndicator = nameof(IndicatorType.MainTimeFrameVolume);
+                                    minSelectValue = m_options.Value.MinimumVolume;
+                                    break;
+                                case StrategySelectPreference.NormalizedAverageTrueRange:
+                                    strategySelectIndicator = nameof(IndicatorType.NormalizedAverageTrueRange);
+                                    minSelectValue = m_options.Value.MinNormalizedAverageTrueRangePeriod;
+                                    break;
+                                default:
+                                    throw new ArgumentOutOfRangeException();
+                            }
+
                             if (canAddLongPositions)
                             {
                                 int longStrategiesPerStep = Math.Min(dynamicBotCount.MaxDynamicStrategyOpenPerStep,
@@ -284,16 +300,16 @@ namespace CryptoBlade.Services
                                         x.Value.Indicators
                                     })
                                     .Where(x => x.Indicators.Any(i =>
-                                        i.Name == nameof(IndicatorType.MainTimeFrameVolume) && i.Value is decimal))
+                                        i.Name == strategySelectIndicator && i.Value is decimal value && value >= minSelectValue))
                                     .Where(x => !x.Strategy.Value.IsInLongTrade && x.Strategy.Value.HasBuySignal &&
                                                 x.Strategy.Value.DynamicQtyLong.HasValue)
                                     .Select(x => new
                                     {
                                         Strategy = x,
-                                        MainTimeFrameVolume = (decimal)x.Indicators
-                                            .First(i => i.Name == nameof(IndicatorType.MainTimeFrameVolume)).Value
+                                        StrategySelectIndicator = (decimal)x.Indicators
+                                            .First(i => i.Name == strategySelectIndicator).Value
                                     })
-                                    .OrderByDescending(x => x.MainTimeFrameVolume)
+                                    .OrderByDescending(x => x.StrategySelectIndicator)
                                     .Take(longStrategiesPerStep)
                                     .Select(x => x.Strategy.Strategy.Value.Symbol)
                                     .ToArray();
@@ -320,16 +336,16 @@ namespace CryptoBlade.Services
                                         x.Value.Indicators
                                     })
                                     .Where(x => x.Indicators.Any(i =>
-                                        i.Name == nameof(IndicatorType.MainTimeFrameVolume) && i.Value is decimal))
+                                        i.Name == strategySelectIndicator && i.Value is decimal value && value >= minSelectValue))
                                     .Where(x => !x.Strategy.Value.IsInShortTrade && x.Strategy.Value.HasSellSignal &&
                                                 x.Strategy.Value.DynamicQtyShort.HasValue)
                                     .Select(x => new
                                     {
                                         Strategy = x,
-                                        MainTimeFrameVolume = (decimal)x.Indicators
-                                            .First(i => i.Name == nameof(IndicatorType.MainTimeFrameVolume)).Value
+                                        StrategySelectIndicator = (decimal)x.Indicators
+                                            .First(i => i.Name == strategySelectIndicator).Value
                                     })
-                                    .OrderByDescending(x => x.MainTimeFrameVolume)
+                                    .OrderByDescending(x => x.StrategySelectIndicator)
                                     .Take(shortStrategiesPerStep)
                                     .Select(x => x.Strategy.Strategy.Value.Symbol)
                                     .ToArray();

@@ -24,5 +24,6 @@
         EriTrend,
         LinearRegressionPriceShort,
         LinearRegressionPriceLong,
+        NormalizedAverageTrueRange
     }
 }

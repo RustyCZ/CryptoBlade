@@ -35,5 +35,9 @@ namespace CryptoBlade.Strategies
         public bool EnableRecursiveQtyFactorShort { get; set; }
 
         public bool IgnoreInconsistency { get; set; }
+
+        public StrategySelectPreference StrategySelectPreference { get; set; } = StrategySelectPreference.Volume;
+
+        public int NormalizedAverageTrueRangePeriod { get; set; } = 14;
     }
 }

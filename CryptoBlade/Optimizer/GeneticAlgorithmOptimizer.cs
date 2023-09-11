@@ -88,7 +88,7 @@ namespace CryptoBlade.Optimizer
             var ga = new GeneticAlgorithm(population, fitness, selection, crossover, mutation)
             {
                 Termination = new GenerationNumberTermination(geneticAlgorithmOptions.GenerationCount),
-                TaskExecutor = new CustomParallelTaskExecutor(10, m_logger),
+                TaskExecutor = new CustomParallelTaskExecutor(m_options.Value.Optimizer.ParallelTasks, m_logger),
                 CrossoverProbability = geneticAlgorithmOptions.CrossoverProbability,
                 MutationProbability = geneticAlgorithmOptions.MutationProbability,
             };

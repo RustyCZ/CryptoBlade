@@ -12,10 +12,16 @@ namespace CryptoBlade.Optimizer
         {
             m_parallelism = parallelism;
             m_logger = logger;
+            ThreadPool.SetMinThreads(parallelism, parallelism);
         }
+
+        public int MinThreads => m_parallelism;
+
+        public int MaxThreads => m_parallelism * 50;
 
         public override bool Start()
         {
+            SetThreadPoolConfig(out _, out _, out _, out _);
             base.Start();
             m_cancellationTokenSource = new CancellationTokenSource();
             CancellationToken cancel = m_cancellationTokenSource.Token;
@@ -46,6 +52,30 @@ namespace CryptoBlade.Optimizer
             Task.WaitAll(startedTasks.ToArray());
             
             return true;
+        }
+
+        /// <summary>
+        /// Configure the ThreadPool min and max threads number to the define on this instance properties.
+        /// </summary>
+        /// <param name="minWorker">Minimum worker.</param>
+        /// <param name="minIOC">Minimum ioc.</param>
+        /// <param name="maxWorker">Max worker.</param>
+        /// <param name="maxIOC">Max ioc.</param>
+        protected void SetThreadPoolConfig(out int minWorker, out int minIOC, out int maxWorker, out int maxIOC)
+        {
+            ThreadPool.GetMinThreads(out minWorker, out minIOC);
+
+            if (MinThreads > minWorker)
+            {
+                ThreadPool.SetMinThreads(MinThreads, minIOC);
+            }
+
+            ThreadPool.GetMaxThreads(out maxWorker, out maxIOC);
+
+            if (MaxThreads > maxWorker)
+            {
+                ThreadPool.SetMaxThreads(MaxThreads, maxIOC);
+            }
         }
 
         public override void Stop()

@@ -40,7 +40,19 @@ namespace CryptoBlade.Strategies.Policies
                     s_logger.LogWarning(result.Exception, "Error with Exchange API. Retrying...");
                 else
                     s_logger.LogWarning("Error with Exchange API. Retrying...");
+                WaitWhenIpRateLimit(result.Result);
             });
+
+        private static void WaitWhenIpRateLimit(WebCallResult? result)
+        {
+            if (result == null)
+                return;
+            if (result.Error != null &&
+                result.Error.Code == (int)BybitErrorCodes.IpRateLimit)
+            {
+                Task.Delay(TimeSpan.FromMinutes(5)).Wait();
+            }
+        }
     }
 
     public static class ExchangePolicies<T>
@@ -69,6 +81,7 @@ namespace CryptoBlade.Strategies.Policies
                     s_logger.LogWarning(result.Exception, "Error with Exchange API. Retrying with delay...");
                 else
                     s_logger.LogWarning("Too many visits. Retrying with delay...");
+                WaitWhenIpRateLimit(result.Result);
             });
 
         public static AsyncRetryPolicy<WebCallResult<BybitResponse<T>>> RetryTooManyVisitsBybitResponse { get; } = Policy
@@ -80,6 +93,29 @@ namespace CryptoBlade.Strategies.Policies
                     s_logger.LogWarning(result.Exception, "Error with Exchange API. Retrying with delay...");
                 else
                     s_logger.LogWarning("Too many visits. Retrying with delay...");
+                WaitWhenIpRateLimit(result.Result);
             });
+
+        private static void WaitWhenIpRateLimit<T>(WebCallResult<BybitResponse<T>>? result)
+        {
+            if (result == null)
+                return;
+            if (result.Error != null &&
+                result.Error.Code == (int)BybitErrorCodes.IpRateLimit)
+            {
+                Task.Delay(TimeSpan.FromMinutes(5)).Wait();
+            }
+        }
+
+        private static void WaitWhenIpRateLimit<T>(WebCallResult<T>? result)
+        {
+            if (result == null)
+                return;
+            if (result.Error != null &&
+                result.Error.Code == (int)BybitErrorCodes.IpRateLimit)
+            {
+                Task.Delay(TimeSpan.FromMinutes(5)).Wait();
+            }
+        }
     }
 }

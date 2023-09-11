@@ -324,7 +324,7 @@ namespace CryptoBlade.Services
             using (await m_lock.LockAsync())
             {
                 List<Task> initTasks = new List<Task>();
-                foreach (var tradingStrategy in m_strategies)
+                foreach (var tradingStrategy in m_strategies.Where(x => !x.Value.ConsistentData))
                 {
                     await DelayBetweenEachSymbol(cancel);
                     var initTask = InitializeStrategy(tradingStrategy.Value, cancel);

@@ -6,6 +6,7 @@ using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
 using ScottPlot;
+using ScottPlot.Extensions;
 
 namespace CryptoBlade.BackTesting
 {
@@ -207,7 +208,6 @@ namespace CryptoBlade.BackTesting
             var sampledBalanceInTime = SampleBalanceInTime();
             double equityToBalanceStdDev = CalculateEquityToBalanceStandardDeviation(sampledBalanceInTime);
             double expectedGainsStandardDeviation = CalculateExpectedGainsStandardDeviation(sampledBalanceInTime, (double)dailyGainPercent);
-             
             BacktestPerformanceResult result = new BacktestPerformanceResult
             {
                 InitialBalance = initialBalance,
@@ -253,6 +253,8 @@ namespace CryptoBlade.BackTesting
                 .Where(b => b.Balance.WalletBalance.HasValue && b.Balance.Equity.HasValue)
                 .Select(b => (double)b.Balance.Equity!.Value / (double)b.Balance.WalletBalance!.Value);
             var standardDeviation = TradingHelpers.StandardDeviation(equityToBalanceInSampledTime.ToArray());
+            if(standardDeviation.IsInfiniteOrNaN())
+                return 0;
             return standardDeviation;
         }
 
@@ -266,6 +268,8 @@ namespace CryptoBlade.BackTesting
                 .Select(b => ((double)b.Balance.WalletBalance!.Value - initialBalance) / 
                     ((initialBalance * Math.Pow(1 + averageDailyGain, (b.Time - m_tradingBotOptions.Value.BackTest.Start).TotalDays)) - initialBalance));
             var standardDeviation = TradingHelpers.StandardDeviation(gainsToExpectedGains.ToArray());
+            if(standardDeviation.IsInfiniteOrNaN())
+                return 0;
             return standardDeviation;
         }
 

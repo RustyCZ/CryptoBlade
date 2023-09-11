@@ -113,7 +113,7 @@ namespace CryptoBlade.Strategies.Common
             CurrentExposureLong = null;
             CurrentExposureShort = null;
             var balance = m_walletManager.Contract;
-            if (longPosition != null && Ticker != null && balance.WalletBalance.HasValue)
+            if (longPosition != null && Ticker != null && balance.WalletBalance.HasValue && balance.WalletBalance.Value > 0)
             {
                 var longValue = longPosition.Quantity * Ticker.LastPrice;
                 CurrentExposureLong = longValue / balance.WalletBalance.Value;
@@ -121,7 +121,7 @@ namespace CryptoBlade.Strategies.Common
                 UnrealizedLongPnlPercent = longPositionValue / balance.WalletBalance.Value;
             }
 
-            if (shortPosition != null && Ticker != null && balance.WalletBalance.HasValue)
+            if (shortPosition != null && Ticker != null && balance.WalletBalance.HasValue && balance.WalletBalance.Value > 0)
             {
                 var shortValue = shortPosition.Quantity * Ticker.LastPrice;
                 CurrentExposureShort = shortValue / balance.WalletBalance.Value;

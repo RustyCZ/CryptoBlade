@@ -239,27 +239,21 @@ namespace CryptoBlade.Services
 
         private async void OnTicker(string symbol, Ticker ticker)
         {
-            using (await m_lock.LockAsync())
-            {
-                if (m_strategies.TryGetValue(symbol, out _))
-                    await TickerChannel.Writer.WriteAsync(new SymbolTicker(symbol, ticker));
-            }
+            if (m_strategies.TryGetValue(symbol, out _))
+                await TickerChannel.Writer.WriteAsync(new SymbolTicker(symbol, ticker));
         }
 
         private async void OnKlineUpdate(string symbol, Candle candle)
         {
-            using (await m_lock.LockAsync())
+            if (m_strategies.TryGetValue(symbol, out var strategy))
             {
-                if (m_strategies.TryGetValue(symbol, out var strategy))
+                await CandleChannel.Writer.WriteAsync(new SymbolCandle(symbol, candle));
+                bool isPrimaryCandle = strategy.RequiredTimeFrameWindows.Any(x => x.TimeFrame == candle.TimeFrame);
+                if (isPrimaryCandle)
                 {
-                    await CandleChannel.Writer.WriteAsync(new SymbolCandle(symbol, candle));
-                    bool isPrimaryCandle = strategy.RequiredTimeFrameWindows.Any(x => x.TimeFrame == candle.TimeFrame);
-                    if (isPrimaryCandle)
-                    {
-                        m_logger.LogDebug(
-                            $"Strategy {strategy.Name}:{strategy.Symbol} received primary candle. Scheduling trade execution.");
-                        await m_strategyExecutionChannel.Writer.WriteAsync(strategy.Symbol, CancellationToken.None);
-                    }
+                    m_logger.LogDebug(
+                        $"Strategy {strategy.Name}:{strategy.Symbol} received primary candle. Scheduling trade execution.");
+                    await m_strategyExecutionChannel.Writer.WriteAsync(strategy.Symbol, CancellationToken.None);
                 }
             }
         }

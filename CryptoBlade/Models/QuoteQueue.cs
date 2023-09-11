@@ -27,9 +27,11 @@ namespace CryptoBlade.Models
                 {
                     if (m_lastQuote.Date.Equals(candle.Date))
                         return true; // do not add duplicate
+                    if (m_lastQuote.Date > candle.Date)
+                        return true; // do not add out of order
                     var timeSpan = candle.Date - m_lastQuote.Date;
                     var tfTimespan = m_timeFrame.ToTimeSpan();
-                    if(!timeSpan.Equals(tfTimespan))
+                    if (!timeSpan.Equals(tfTimespan))
                         consistent = false;
                 }
                 m_queue.Enqueue(candle);

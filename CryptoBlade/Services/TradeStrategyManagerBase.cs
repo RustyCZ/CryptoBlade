@@ -142,9 +142,14 @@ namespace CryptoBlade.Services
             return Task.CompletedTask;
         }
 
+        protected virtual async Task DelayBetweenEachSymbol(CancellationToken cancel)
+        {
+            TimeSpan delayBetweenEachSymbol = TimeSpan.FromMilliseconds(500);
+            await Task.Delay(delayBetweenEachSymbol, cancel);
+        }
+
         private async Task InitStrategiesAsync(CancellationToken cancel)
         {
-            TimeSpan delayBetweenEachSymbol = TimeSpan.FromSeconds(2);
             await PreInitializationPhaseAsync(cancel);
             var symbolInfo = await GetSymbolInfoAsync(cancel);
             Dictionary<string, SymbolInfo> symbolInfoDict = symbolInfo
@@ -162,7 +167,7 @@ namespace CryptoBlade.Services
 
             foreach (ITradingStrategy strategy in m_strategies.Values)
             {
-                await Task.Delay(delayBetweenEachSymbol, cancel);
+                await DelayBetweenEachSymbol(cancel);
                 if (symbolInfoDict.TryGetValue(strategy.Symbol, out var info))
                     await strategy.SetupSymbolAsync(info, cancel);
             }
@@ -193,7 +198,7 @@ namespace CryptoBlade.Services
             List<Task> initTasks = new();
             foreach (var strategy in m_strategies.Values)
             {
-                await Task.Delay(delayBetweenEachSymbol, cancel);
+                await DelayBetweenEachSymbol(cancel);
                 var initTask = InitializeStrategy(strategy, cancel);
                 initTasks.Add(initTask);
             }

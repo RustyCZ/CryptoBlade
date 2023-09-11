@@ -35,6 +35,11 @@ namespace CryptoBlade.BackTesting
             return Task.CompletedTask;
         }
 
+        protected override Task DelayBetweenEachSymbol(CancellationToken cancel)
+        {
+            return Task.CompletedTask;
+        }
+
         protected override async Task StrategyExecutionNextStep(CancellationToken cancel)
         {
             bool hasData = await m_backTestExchange.AdvanceTimeAsync(cancel);

@@ -4,8 +4,10 @@
 ## Get latest from https://github.com/github/gitignore/blob/main/VisualStudio.gitignore
 CryptoBlade/HistoricalData
 CryptoBlade/BackTests
+CryptoBlade/OptimizerResults
 cryptoblade.tar
 Samples/BackTest/BackTests
+Samples/BackTest/OptimizerResults
 Samples/BackTest/HistoricalData
 # User-specific files
 *.rsuser

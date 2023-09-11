@@ -6,6 +6,7 @@ using System.Threading.Tasks;
 using Bybit.Net.Clients;
 using CryptoBlade.BackTesting;
 using CryptoBlade.BackTesting.Bybit;
+using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
 using CryptoBlade.Models;
@@ -39,7 +40,7 @@ namespace CryptoBlade.Tests.BackTesting
 
             var options = Options.Create(new ProtoHistoricalDataStorageOptions
             {
-                Directory = "HistoricalData",
+                Directory = ConfigConstants.DefaultHistoricalDataDirectory,
             });
             var bybit = new BybitRestClient();
             var cbRestClientOptions = Options.Create(new BybitCbFuturesRestClientOptions

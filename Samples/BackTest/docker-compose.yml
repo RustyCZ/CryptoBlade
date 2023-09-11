@@ -13,6 +13,7 @@ services:
     environment:
         - CB_TradingBot__Accounts__0__ApiKey=
         - CB_TradingBot__Accounts__0__ApiSecret=
+        - CB_TradingBot__BotMode=Backtest
         - CB_TradingBot__StrategyName=Mona
         - CB_TradingBot__MaxRunningStrategies=10
         - CB_TradingBot__WalletExposureLong=2.0

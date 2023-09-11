@@ -13,6 +13,7 @@ services:
     environment:
         - CB_TradingBot__Accounts__0__ApiKey=
         - CB_TradingBot__Accounts__0__ApiSecret=
+        - CB_TradingBot__BotMode=Live
         - CB_TradingBot__StrategyName=LinearRegression
         - CB_TradingBot__MaxRunningStrategies=4
         - CB_TradingBot__WalletExposureLong=2.0

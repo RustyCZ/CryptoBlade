@@ -15,6 +15,7 @@ using Microsoft.Extensions.Options;
 using Bybit.Net.Clients;
 using CryptoBlade.BackTesting.Binance;
 using CryptoBlade.BackTesting.Bybit;
+using CryptoBlade.Optimizer;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace CryptoBlade
@@ -23,12 +24,6 @@ namespace CryptoBlade
     {
         public static void Main(string[] args)
         {
-            // hedge insane funding rates
-            // better rate limiting
-            // executed orders page
-            // list of open orders page
-            // bybit server time component, check against candle data in periodic verification check
-            // Special readonly manager
             var builder = WebApplication.CreateBuilder(args);
             builder.Configuration.AddEnvironmentVariables("CB_");
             var debugView = builder.Configuration.GetDebugView();
@@ -47,11 +42,9 @@ namespace CryptoBlade
 
             // Add services to the container.
             builder.Services.AddRazorPages();
-            builder.Services.AddHealthChecks()
-                .AddCheck<TradeExecutionHealthCheck>("TradeExecution");
+            var healthChecksBuilder = builder.Services.AddHealthChecks();
             builder.Services.AddHostedService<TradingHostedService>();
             builder.Services.Configure<TradingBotOptions>(builder.Configuration.GetSection("TradingBot"));
-            builder.Services.AddSingleton<ITradingStrategyFactory, TradingStrategyFactory>();
             builder.Services.AddLogging(options =>
             {
                 options.AddSimpleConsole(o =>
@@ -61,25 +54,26 @@ namespace CryptoBlade
                 });
             });
 
-            bool isBackTest = tradingBotOptions.IsBackTest();
-
-            if (isBackTest)
+            switch (tradingBotOptions.BotMode)
             {
-                AddBackTestDependencies(builder);
-            }
-            else
-            {
-                AddLiveDependencies(builder);
+                case BotMode.Live:
+                    AddLiveDependencies(builder, healthChecksBuilder);
+                    break;
+                case BotMode.Backtest:
+                    AddBackTestDependencies(builder, healthChecksBuilder);
+                    break;
+                case BotMode.Optimizer:
+                    AddOptimizerDependencies(builder, healthChecksBuilder);
+                    break;
+                default:
+                    Console.WriteLine("Unsupported bot mode.");
+                    return;
             }
 
             var app = builder.Build();
             var lf = app.Services.GetRequiredService<ILoggerFactory>();
             ApplicationLogging.LoggerFactory = lf;
-            var logger = ApplicationLogging.LoggerFactory.CreateLogger("Startup");
-            var assembly = Assembly.GetExecutingAssembly();
-            var version = assembly.GetName().Version;
-            logger.LogInformation($"CryptoBlade v{version}");
-            logger.LogInformation(debugView);
+            LogVersionAndConfiguration(debugView);
 
             if (!hasApiCredentials)
                 app.Logger.LogWarning("No API credentials found!.");
@@ -98,8 +92,30 @@ namespace CryptoBlade
             app.Run();
         }
 
-        private static void AddBackTestDependencies(WebApplicationBuilder builder)
+        private static void LogVersionAndConfiguration(string configuration)
         {
+            var logger = ApplicationLogging.LoggerFactory.CreateLogger("Startup");
+            var assembly = Assembly.GetExecutingAssembly();
+            var version = assembly.GetName().Version;
+            logger.LogInformation($"CryptoBlade v{version}");
+            logger.LogInformation(configuration);
+        }
+
+        private static void AddOptimizerDependencies(WebApplicationBuilder builder,
+            IHealthChecksBuilder healthChecksBuilder)
+        {
+            healthChecksBuilder.AddCheck<BacktestExecutionHealthCheck>("Backtest");
+            builder.Services.AddHostedService<OptimizerHostedService>();
+            builder.Services.AddSingleton<IOptimizer, GeneticAlgorithmOptimizer>();
+            builder.Services.AddSingleton<IWalletManager, NullWalletManager>();
+            builder.Services.AddSingleton<ITradeStrategyManager, NullTradeStrategyManager>();
+        }
+
+        private static void AddBackTestDependencies(WebApplicationBuilder builder, IHealthChecksBuilder healthChecksBuilder)
+        {
+            builder.Services.AddSingleton<ITradingStrategyFactory, TradingStrategyFactory>();
+            builder.Services.AddSingleton<IBackTestIdProvider, BackTestIdProvider>();
+            healthChecksBuilder.AddCheck<BacktestExecutionHealthCheck>("Backtest");
             var tradingBotOptions = builder.Configuration.GetSection("TradingBot").Get<TradingBotOptions>();
             TradingMode tradingMode = tradingBotOptions!.TradingMode;
 
@@ -121,7 +137,7 @@ namespace CryptoBlade
                     cbRestClient);
                 return exchange;
             });
-            const string historicalDataDirectory = "HistoricalData";
+            const string historicalDataDirectory = ConfigConstants.DefaultHistoricalDataDirectory;
             builder.Services.AddOptions<BackTestExchangeOptions>().Configure(x =>
             {
                 x.Start = tradingBotOptions.BackTest.Start;
@@ -173,7 +189,7 @@ namespace CryptoBlade
             builder.Services.AddHostedService<BackTestPerformanceTracker>();
             builder.Services.AddOptions<BackTestPerformanceTrackerOptions>().Configure(x =>
             {
-                x.BackTestsDirectory = "BackTests";
+                x.BackTestsDirectory = ConfigConstants.BackTestsDirectory;
             });
         }
 
@@ -201,8 +217,10 @@ namespace CryptoBlade
             return cbRestClient;
         }
 
-        private static void AddLiveDependencies(WebApplicationBuilder builder)
+        private static void AddLiveDependencies(WebApplicationBuilder builder, IHealthChecksBuilder healthChecksBuilder)
         {
+            builder.Services.AddSingleton<ITradingStrategyFactory, TradingStrategyFactory>();
+            healthChecksBuilder.AddCheck<TradeExecutionHealthCheck>("TradeExecution");
             var tradingBotOptions = builder.Configuration.GetSection("TradingBot").Get<TradingBotOptions>();
             TradingMode tradingMode = tradingBotOptions!.TradingMode;
 

@@ -1,9 +1,11 @@
-﻿using CryptoBlade.Strategies;
+﻿using System.Text.Json;
+using CryptoBlade.Strategies;
 
 namespace CryptoBlade.Configuration
 {
     public class TradingBotOptions
     {
+        public BotMode BotMode { get; set; } = BotMode.Backtest;
         public ExchangeAccount[] Accounts { get; set; } = Array.Empty<ExchangeAccount>();
         public string AccountName { get; set; } = string.Empty;
         public int MaxRunningStrategies { get; set; } = 15;
@@ -36,5 +38,6 @@ namespace CryptoBlade.Configuration
         public Unstucking Unstucking { get; set; } = new Unstucking();
         public StrategyOptions Strategies { get; set; } = new StrategyOptions();
         public CriticalMode CriticalMode { get; set; } = new CriticalMode();
+        public OptimizerOptions Optimizer { get; set; } = new OptimizerOptions();
     }
 }

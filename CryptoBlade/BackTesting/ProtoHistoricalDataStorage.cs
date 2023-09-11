@@ -30,7 +30,7 @@ namespace CryptoBlade.BackTesting
 
         public Task StoreAsync(string symbol, HistoricalDayData dayData, bool flush, CancellationToken cancel = default)
         {
-            var symbolDirectory = GetSymbolDirectory(symbol, dayData.Day);
+            var symbolDirectory = GetSymbolDirectory(symbol);
             if (!Directory.Exists(symbolDirectory))
                 Directory.CreateDirectory(symbolDirectory);
             var fileName = GetSymbolFileName(symbol, dayData.Day);
@@ -45,7 +45,7 @@ namespace CryptoBlade.BackTesting
         {
             start = start.Date;
             var days = new List<DateTime>();
-            var directory = GetSymbolDirectory(symbol, start);
+            var directory = GetSymbolDirectory(symbol);
             HashSet<string> files = new HashSet<string>();
             if (Directory.Exists(directory))
             {
@@ -68,7 +68,7 @@ namespace CryptoBlade.BackTesting
             return fileName;
         }
 
-        private string GetSymbolDirectory(string symbol, DateTime day)
+        private string GetSymbolDirectory(string symbol)
         {
             var fileName = Path.Combine(m_options.Value.Directory, symbol);
             return fileName;

@@ -1,4 +1,6 @@
-﻿namespace CryptoBlade.BackTesting
+﻿using CryptoBlade.Configuration;
+
+namespace CryptoBlade.BackTesting
 {
     public class BackTestExchangeOptions
     {
@@ -16,8 +18,6 @@
 
         public decimal TakerFeeRate { get; set; } = 0.00055m;
 
-        public bool OptimisticFill { get; set; } = true;
-
-        public string HistoricalDataDirectory { get; set; } = "HistoricalData";
+        public string HistoricalDataDirectory { get; set; } = ConfigConstants.DefaultHistoricalDataDirectory;
     }
 }

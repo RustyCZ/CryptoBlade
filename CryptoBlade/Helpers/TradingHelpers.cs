@@ -167,7 +167,7 @@ namespace CryptoBlade.Helpers
             return new LinearChannelPrice(expectedPrice, standardDeviation);
         }
 
-        private static double StandardDeviation(double[] data)
+        public static double StandardDeviation(double[] data)
         {
             double mean = data.Sum() / data.Length;
             double sumOfSquares = data.Select(x => (x - mean) * (x - mean)).Sum();

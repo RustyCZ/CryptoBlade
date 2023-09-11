@@ -1,6 +1,7 @@
 ﻿using System.Text.Json;
 using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
+using CryptoBlade.Helpers;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
 using Nito.AsyncEx;
@@ -37,7 +38,8 @@ namespace CryptoBlade.BackTesting
         public BackTestPerformanceTracker(IOptions<BackTestPerformanceTrackerOptions> options,
             IOptions<TradingBotOptions> tradingBotOptions,
             BackTestExchange backTestExchange, 
-            IHostApplicationLifetime applicationLifetime, 
+            IHostApplicationLifetime applicationLifetime,
+            IBackTestIdProvider backTestIdProvider,
             ILogger<BackTestPerformanceTracker> logger)
         {
             m_balanceHistory = new List<BalanceInTime>();
@@ -48,8 +50,11 @@ namespace CryptoBlade.BackTesting
             m_options = options;
             m_lock = new AsyncLock();
             m_tradingBotOptions = tradingBotOptions;
-            m_testId = $"{DateTime.Now:yyyyMMddHHmm}-{Guid.NewGuid().ToString("N")}";
+            m_testId = backTestIdProvider.GetTestId();
+            Result = new BacktestPerformanceResult();
         }
+
+        public BacktestPerformanceResult Result { get; private set; }
 
         public async Task StartAsync(CancellationToken cancellationToken)
         {
@@ -181,6 +186,9 @@ namespace CryptoBlade.BackTesting
             decimal finalEquity = m_balanceHistory.Last().Balance.Equity!.Value;
             decimal dailyGainPercent;
             int numberOfDays = (int)(m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays;
+
+            if (numberOfDays <= 0)
+                numberOfDays = 1;
             try
             {
                 decimal dailyGain = (decimal)Math.Pow((double)(finalBalance / initialBalance), 1.0 / numberOfDays) - 1;
@@ -196,6 +204,10 @@ namespace CryptoBlade.BackTesting
             if (m_totalProfit == 0)
                 totalProfit = 1;
             decimal lossProfitRatio = m_totalLoss / totalProfit;
+            var sampledBalanceInTime = SampleBalanceInTime();
+            double equityToBalanceStdDev = CalculateEquityToBalanceStandardDeviation(sampledBalanceInTime);
+            double expectedGainsStandardDeviation = CalculateExpectedGainsStandardDeviation(sampledBalanceInTime, (double)dailyGainPercent);
+             
             BacktestPerformanceResult result = new BacktestPerformanceResult
             {
                 InitialBalance = initialBalance,
@@ -206,10 +218,14 @@ namespace CryptoBlade.BackTesting
                 RealizedPnl = m_lastBalance.Balance.RealizedPnl!.Value,
                 AverageDailyGainPercent = dailyGainPercent,
                 TotalDays = numberOfDays,
+                ExpectedDays = (int)(m_tradingBotOptions.Value.BackTest.End - m_tradingBotOptions.Value.BackTest.Start).TotalDays,
                 MaxDrawDown = m_maxDrawDown,
                 LossProfitRatio = lossProfitRatio,
                 SpotBalance = m_spotBalance,
+                EquityToBalanceStdDev = equityToBalanceStdDev,
+                ExpectedGainsStdDev = expectedGainsStandardDeviation,
             };
+            Result = result;
             var directory = Path.Combine(m_options.Value.BackTestsDirectory, m_testId);
             Directory.CreateDirectory(directory);
             string filePath = Path.Combine(directory, m_tradingBotOptions.Value.BackTest.ResultFileName);
@@ -220,12 +236,57 @@ namespace CryptoBlade.BackTesting
             string filePathDetailed = Path.Combine(directory, m_tradingBotOptions.Value.BackTest.ResultDetailedFileName);
             var openPositions = await m_backTestExchange.GetOpenPositionsWithOrdersAsync();
             result.OpenPositionWithOrders = openPositions;
+            Result = result;
             json = JsonSerializer.Serialize(result, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(filePathDetailed, json);
 
             var botSettings = JsonSerializer.Serialize(m_tradingBotOptions.Value, new JsonSerializerOptions { WriteIndented = true });
             await File.WriteAllTextAsync(Path.Combine(directory, "appsettings.json"), botSettings);
             m_resultsSaved = true;
+        }
+
+        private double CalculateEquityToBalanceStandardDeviation(List<BalanceInTime> sampledBalanceHistory)
+        {
+            if(sampledBalanceHistory.Count == 0)
+                return 0;
+            var equityToBalanceInSampledTime = sampledBalanceHistory
+                .Where(b => b.Balance.WalletBalance.HasValue && b.Balance.Equity.HasValue)
+                .Select(b => (double)b.Balance.Equity!.Value / (double)b.Balance.WalletBalance!.Value);
+            var standardDeviation = TradingHelpers.StandardDeviation(equityToBalanceInSampledTime.ToArray());
+            return standardDeviation;
+        }
+
+        private double CalculateExpectedGainsStandardDeviation(List<BalanceInTime> sampledBalanceHistory, double averageDailyGain)
+        {
+            if(sampledBalanceHistory.Count == 0)
+                return 0;
+            double initialBalance = (double)m_tradingBotOptions.Value.BackTest.InitialBalance;
+            var gainsToExpectedGains = sampledBalanceHistory
+                .Where(b => b.Balance.WalletBalance.HasValue)
+                .Select(b => ((double)b.Balance.WalletBalance!.Value - initialBalance) / 
+                    ((initialBalance * Math.Pow(1 + averageDailyGain, (b.Time - m_tradingBotOptions.Value.BackTest.Start).TotalDays)) - initialBalance));
+            var standardDeviation = TradingHelpers.StandardDeviation(gainsToExpectedGains.ToArray());
+            return standardDeviation;
+        }
+
+        private List<BalanceInTime> SampleBalanceInTime()
+        {
+            var sampledBalanceHistory = new List<BalanceInTime>();
+            var lastSampledTime = m_balanceHistory.First().Time;
+            foreach (var balanceInTime in m_balanceHistory)
+            {
+                if (balanceInTime.Time - lastSampledTime > TimeSpan.FromMinutes(1) 
+                    && balanceInTime.Balance.WalletBalance.HasValue
+                    && balanceInTime.Balance.WalletBalance.Value > 0
+                    && balanceInTime.Balance.Equity.HasValue
+                    && balanceInTime.Balance.Equity.Value > 0)
+                {
+                    sampledBalanceHistory.Add(balanceInTime);
+                    lastSampledTime = balanceInTime.Time;
+                }
+            }
+
+            return sampledBalanceHistory;
         }
 
         private void PlotBalanceAndEquity()
@@ -261,21 +322,5 @@ namespace CryptoBlade.BackTesting
             string filePath = Path.Combine(directory, "balance_and_equity_sampled.png");
             plt.SavePng(filePath, 2900, 1800);
         }
-    }
-
-    public class BacktestPerformanceResult
-    {
-        public decimal InitialBalance { get; set; }
-        public decimal FinalBalance { get; set; }
-        public decimal FinalEquity { get; set; }
-        public decimal LowestEquityToBalance { get; set; }
-        public decimal UnrealizedPnl { get; set; }
-        public decimal RealizedPnl { get; set; }
-        public decimal AverageDailyGainPercent { get; set; }
-        public decimal MaxDrawDown { get; set; }
-        public int TotalDays { get; set; }
-        public decimal LossProfitRatio { get; set; }
-        public decimal SpotBalance { get; set; }
-        public OpenPositionWithOrders[] OpenPositionWithOrders { get; set; } = Array.Empty<OpenPositionWithOrders>();
     }
 }

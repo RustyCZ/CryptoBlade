@@ -1,0 +1,32 @@
+﻿namespace CryptoBlade.Optimizer
+{
+    public enum TradingBotGene
+    {
+        WalletExposureLong,
+        WalletExposureShort,
+        QtyFactorLong,
+        QtyFactorShort,
+        EnableRecursiveQtyFactorLong,
+        EnableRecursiveQtyFactorShort,
+        DcaOrdersCount,
+        UnstuckingEnabled,
+        SlowUnstuckThresholdPercent,
+        SlowUnstuckPositionThresholdPercent,
+        SlowUnstuckPercentStep,
+        ForceUnstuckThresholdPercent,
+        ForceUnstuckPositionThresholdPercent,
+        ForceUnstuckPercentStep,
+        ForceKillTheWorst,
+        MinimumVolume,
+        MinimumPriceDistance,
+        MinProfitRate,
+        TargetLongExposure,
+        TargetShortExposure,
+        MaxLongStrategies,
+        MaxShortStrategies,
+        EnableCriticalModeLong,
+        EnableCriticalModeShort,
+        CriticalModelWalletExposureThresholdLong,
+        CriticalModelWalletExposureThresholdShort,
+    }
+}

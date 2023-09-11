@@ -23,8 +23,10 @@
 **/values.dev.yaml
 CryptoBlade/HistoricalData
 CryptoBlade/BackTests
+CryptoBlade/OptimizerResults
 LICENSE
 README.md
 cryptoblade.tar
 Samples/BackTest/BackTests
 Samples/BackTest/HistoricalData
+Samples/BackTest/OptimizerResults

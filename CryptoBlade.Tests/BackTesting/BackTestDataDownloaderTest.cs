@@ -56,7 +56,7 @@ namespace CryptoBlade.Tests.BackTesting
             var dataSource = DataSource.Bybit;
             var options = Options.Create(new ProtoHistoricalDataStorageOptions
             {
-                Directory = "HistoricalData",
+                Directory = ConfigConstants.DefaultHistoricalDataDirectory,
             });
             var storage = new ProtoHistoricalDataStorage(options);
             IHistoricalDataDownloader downloader;

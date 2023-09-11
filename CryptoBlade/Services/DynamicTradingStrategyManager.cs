@@ -5,7 +5,6 @@ using CryptoBlade.Strategies;
 using CryptoBlade.Strategies.Common;
 using CryptoBlade.Strategies.Wallet;
 using Microsoft.Extensions.Options;
-using System.Linq;
 
 namespace CryptoBlade.Services
 {

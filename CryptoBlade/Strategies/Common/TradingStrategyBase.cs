@@ -183,7 +183,7 @@ namespace CryptoBlade.Strategies.Common
                     consistent = false;
             }
 
-            QueueInitialized = true;
+            QueueInitialized = consistent;
 
             await ProcessCandleBuffer();
 

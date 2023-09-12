@@ -29,7 +29,7 @@ namespace CryptoBlade.Optimizer.Strategies
             options.Unstucking.ForceUnstuckPositionThresholdPercent = Convert.ToDecimal(genes[(int)TradingBotGene.ForceUnstuckPositionThresholdPercent + offset].FloatValue);
             options.Unstucking.ForceUnstuckPercentStep = Convert.ToDecimal(genes[(int)TradingBotGene.ForceUnstuckPercentStep + offset].FloatValue);
             options.Unstucking.ForceKillTheWorst = genes[(int)TradingBotGene.ForceKillTheWorst + offset].BoolValue;
-            options.MinimumVolume = Convert.ToDecimal(genes[(int)TradingBotGene.MinimumVolume + offset].FloatValue);
+            options.MinimumVolume = genes[(int)TradingBotGene.MinimumVolume + offset].IntValue;
             options.MinimumPriceDistance = Convert.ToDecimal(genes[(int)TradingBotGene.MinimumPriceDistance + offset].FloatValue);
             options.MinProfitRate = Convert.ToDecimal(genes[(int)TradingBotGene.MinProfitRate + offset].FloatValue);
             options.DynamicBotCount.TargetLongExposure = Convert.ToDecimal(genes[(int)TradingBotGene.TargetLongExposure + offset].FloatValue);

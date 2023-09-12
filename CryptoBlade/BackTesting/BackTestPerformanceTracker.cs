@@ -1,4 +1,5 @@
 ﻿using System.Text.Json;
+using System.Threading;
 using CryptoBlade.Configuration;
 using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
@@ -156,7 +157,8 @@ namespace CryptoBlade.BackTesting
                 await m_walletSubscription.CloseAsync();
                 m_walletSubscription = null;
             }
-
+            var balance = await m_backTestExchange.GetBalancesAsync(cancellationToken);
+            OnWalletUpdate(balance);
             using (await m_lock.LockAsync(cancellationToken))
             {
                 try
@@ -186,7 +188,7 @@ namespace CryptoBlade.BackTesting
             decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value + m_spotBalance;
             decimal finalEquity = m_balanceHistory.Last().Balance.Equity!.Value;
             decimal dailyGainPercent;
-            int numberOfDays = (int)(m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays;
+            int numberOfDays = (int)Math.Round((m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays);
 
             if (numberOfDays <= 0)
                 numberOfDays = 1;
@@ -277,19 +279,29 @@ namespace CryptoBlade.BackTesting
         {
             var sampledBalanceHistory = new List<BalanceInTime>();
             var lastSampledTime = m_balanceHistory.First().Time;
+            var lastSampledBalance = m_balanceHistory.First();
             foreach (var balanceInTime in m_balanceHistory)
             {
-                if (balanceInTime.Time - lastSampledTime > TimeSpan.FromMinutes(1) 
-                    && balanceInTime.Balance.WalletBalance.HasValue
-                    && balanceInTime.Balance.WalletBalance.Value > 0
-                    && balanceInTime.Balance.Equity.HasValue
-                    && balanceInTime.Balance.Equity.Value > 0)
+                if (balanceInTime.Time - lastSampledTime > TimeSpan.FromMinutes(1))
                 {
+                    var time = lastSampledTime + TimeSpan.FromMinutes(1);
+                    while (time < balanceInTime.Time)
+                    {
+                        var balance = new Balance
+                        {
+                            Equity = lastSampledBalance.Balance.Equity,
+                            WalletBalance = lastSampledBalance.Balance.WalletBalance,
+                        };
+                        sampledBalanceHistory.Add(new BalanceInTime(balance, time));
+                        time += TimeSpan.FromMinutes(1);
+                    }
                     sampledBalanceHistory.Add(balanceInTime);
                     lastSampledTime = balanceInTime.Time;
+                    lastSampledBalance = balanceInTime;
                 }
             }
 
+            
             return sampledBalanceHistory;
         }
 

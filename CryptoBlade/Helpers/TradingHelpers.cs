@@ -170,7 +170,13 @@ namespace CryptoBlade.Helpers
         public static double StandardDeviation(double[] data)
         {
             double mean = data.Sum() / data.Length;
-            double sumOfSquares = data.Select(x => (x - mean) * (x - mean)).Sum();
+            double sumOfSquares = 0;
+            for (int i = 0; i < data.Length; i++)
+            {
+                var x = data[i];
+                sumOfSquares += (x - mean) * (x - mean);
+            }
+
             return Math.Sqrt(sumOfSquares / data.Length);
         }
     }

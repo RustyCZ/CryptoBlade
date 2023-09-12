@@ -30,7 +30,7 @@ namespace CryptoBlade.BackTesting
             await m_backTestExchange.PrepareDataAsync(cancel);
         }
 
-        protected override Task StrategyExecutionDataDelay(CancellationToken cancel)
+        protected override Task StrategyExecutionDataDelayAsync(CancellationToken cancel)
         {
             return Task.CompletedTask;
         }
@@ -45,14 +45,23 @@ namespace CryptoBlade.BackTesting
             return Task.CompletedTask;
         }
 
-        protected override async Task StrategyExecutionNextStep(CancellationToken cancel)
+        protected override async Task<bool> StrategyExecutionNextStepAsync(CancellationToken cancel)
         {
             bool hasData = await m_backTestExchange.AdvanceTimeAsync(cancel);
+            bool canContinue = true;
             if (!hasData)
+            {
                 m_hostApplicationLifetime.StopApplication();
+                canContinue = false;
+                return canContinue;
+            }
             var balances = await m_backTestExchange.GetBalancesAsync(cancel);
             if (!balances.WalletBalance.HasValue || balances.WalletBalance.Value <= 0)
+            {
                 m_hostApplicationLifetime.StopApplication();
+                canContinue = false;
+            }
+            return canContinue;
         }
 
         protected override Task StrategyExecutionNextCycleDelayAsync(CancellationToken cancel)

@@ -189,8 +189,6 @@ namespace CryptoBlade.Strategies.Common
 
             Ticker = ticker;
             ConsistentData = consistent;
-
-            await EvaluateSignalsAsync(cancel);
         }
 
         public async Task ExecuteAsync(ExecuteParams executeParams, CancellationToken cancel)
@@ -520,18 +518,14 @@ namespace CryptoBlade.Strategies.Common
             if (QueueInitialized)
             {
                 await ProcessCandleBuffer();
-                await EvaluateSignalsAsync(cancel);
             }
         }
 
-        public async Task UpdatePriceDataSync(Ticker ticker, CancellationToken cancel)
+        public Task UpdatePriceDataSync(Ticker ticker, CancellationToken cancel)
         {
             Ticker = ticker;
             LastTickerUpdate = ticker.Timestamp;
-            if (QueueInitialized)
-            {
-                await EvaluateSignalsAsync(cancel);
-            }
+            return Task.CompletedTask;
         }
 
         protected virtual async Task CalculateDynamicQtyAsync()
@@ -681,7 +675,7 @@ namespace CryptoBlade.Strategies.Common
             return Task.CompletedTask;
         }
 
-        protected virtual async Task EvaluateSignalsAsync(CancellationToken cancel)
+        public virtual async Task EvaluateSignalsAsync(CancellationToken cancel)
         {
             HasBuySignal = false;
             HasSellSignal = false;

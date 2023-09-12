@@ -165,7 +165,7 @@ namespace CryptoBlade.Strategies
             int skip = quotesLength - channelLength;
             if (skip < 0)
                 return new LinearChannelPrice(null, null); // not enough quotes
-            OrdinaryLeastSquares ols = new OrdinaryLeastSquares();
+            
             double[] priceData = new double[channelLength];
             double[] xAxis = new double[channelLength];
             for (int i = 0; i < channelLength; i++)
@@ -174,20 +174,13 @@ namespace CryptoBlade.Strategies
                 priceData[i] = (double)averagePrice;
                 xAxis[i] = i;
             }
-            var lr = ols.Learn(xAxis, priceData.ToArray());
+            var standardDeviation = TradingHelpers.StandardDeviation(priceData);
+            OrdinaryLeastSquares ols = new OrdinaryLeastSquares();
+            var lr = ols.Learn(xAxis, priceData);
             var intercept = lr.Intercept;
             var slope = lr.Slope;
             var expectedPrice = intercept + slope * quotes.Length;
-            var standardDeviation = StandardDeviation(priceData);
-
             return new LinearChannelPrice(expectedPrice, standardDeviation);
-        }
-
-        private static double StandardDeviation(double[] data)
-        {
-            double mean = data.Sum() / data.Length;
-            double sumOfSquares = data.Select(x => (x - mean) * (x - mean)).Sum();
-            return Math.Sqrt(sumOfSquares / data.Length);
         }
 
         private readonly record struct LinearChannelPrice(double? ExpectedPrice, double? StandardDeviation);

@@ -82,7 +82,7 @@ namespace CryptoBlade.Services
             m_initTask = Task.Run(async () => await InitStrategiesAsync(ctsCancel), ctsCancel);
         }
 
-        protected virtual async Task StrategyExecutionDataDelay(CancellationToken cancel)
+        protected virtual async Task StrategyExecutionDataDelayAsync(CancellationToken cancel)
         {
             int expectedUpdates = Strategies.Count;
             await StrategyExecutionChannel.Reader.WaitToReadAsync(cancel);
@@ -100,9 +100,9 @@ namespace CryptoBlade.Services
             await Task.Delay(TimeSpan.FromSeconds(10), cancel);
         }
 
-        protected virtual Task StrategyExecutionNextStep(CancellationToken cancel)
+        protected virtual Task<bool> StrategyExecutionNextStepAsync(CancellationToken cancel)
         {
-            return Task.CompletedTask;
+            return Task.FromResult(true);
         }
 
         protected async Task ProcessCandlesAsync(CancellationToken cancel)
@@ -129,12 +129,41 @@ namespace CryptoBlade.Services
             }
         }
 
-        protected async Task ProcessStrategyDataAsync(CancellationToken cancel)
+        protected async Task EvaluateSignalsAsync(CancellationToken cancel)
         {
-            await StrategyExecutionNextStep(cancel);
-            await StrategyExecutionDataDelay(cancel);
+            List<Task> evaluateTasks = new List<Task>();
+            foreach (var strategy in m_strategies.Values)
+            {
+                Task evaluateTask = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await strategy.EvaluateSignalsAsync(cancel);
+                    }
+                    catch (OperationCanceledException)
+                    {
+                    }
+                    catch (Exception e)
+                    {
+                        m_logger.LogWarning(e, "Error while evaluating signals for strategy {Name} for symbol {Symbol}",
+                                                       strategy.Name, strategy.Symbol);
+                    }
+                }, cancel);
+                evaluateTasks.Add(evaluateTask);
+            }
+            await Task.WhenAll(evaluateTasks);
+        }
+
+        protected async Task<bool> ProcessStrategyDataAsync(CancellationToken cancel)
+        {
+            bool canContinue = await StrategyExecutionNextStepAsync(cancel);
+            if (!canContinue)
+                return canContinue;
+            await StrategyExecutionDataDelayAsync(cancel);
             await ProcessTickersAsync(cancel);
             await ProcessCandlesAsync(cancel);
+            await EvaluateSignalsAsync(cancel);
+            return canContinue;
         }
 
         protected virtual Task PreInitializationPhaseAsync(CancellationToken cancel)

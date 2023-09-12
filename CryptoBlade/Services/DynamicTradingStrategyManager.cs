@@ -164,14 +164,16 @@ namespace CryptoBlade.Services
                 {
                     try
                     {
-                        await ProcessStrategyDataAsync(cancel);
-
                         var hasInconsistent = Strategies.Values.Any(x => !x.ConsistentData);
                         if (hasInconsistent)
                         {
                             m_logger.LogWarning("Some strategies have inconsistent data. Reinitialize.");
                             await ReInitializeStrategies(cancel);
                         }
+
+                        bool canContinue = await ProcessStrategyDataAsync(cancel);
+                        if (!canContinue)
+                            break;
 
                         var strategyState = await UpdateTradingStatesAsync(cancel);
                         m_logger.LogDebug(

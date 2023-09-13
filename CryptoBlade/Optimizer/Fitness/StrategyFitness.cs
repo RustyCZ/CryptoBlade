@@ -68,11 +68,13 @@ namespace CryptoBlade.Optimizer.Fitness
                 double avgDailyGainPreference = fitnessOptions.AvgDailyGainPreference;
                 double lowestEquityToBalancePreference = fitnessOptions.LowestEquityToBalancePreference;
                 double expectedGainsStdDevPreference = fitnessOptions.ExpectedGainsStdDevPreference;
+                double equityToBalanceStdDevPreference = fitnessOptions.EquityToBalanceStdDevPreference;
                 double fitness =
                     runningDaysPreference * runningDaysRatio
                     - avgDailyGainPreference
                     - lowestEquityToBalancePreference
-                    - expectedGainsStdDevPreference;
+                    - expectedGainsStdDevPreference
+                    - equityToBalanceStdDevPreference;
                 double maxAvgDailyGainPercent = fitnessOptions.MaxAvgDailyGainPercent;
                 double minAvgDailyGainPercent = fitnessOptions.MinAvgDailyGainPercent;
                 if (result.LowestEquityToBalance > 0)
@@ -84,7 +86,8 @@ namespace CryptoBlade.Optimizer.Fitness
                     fitness = runningDaysPreference * runningDaysRatio
                               + avgDailyGainPreference * normalizedAvgDailyGainPercent
                               + lowestEquityToBalancePreference * (double)result.LowestEquityToBalance
-                              - expectedGainsStdDevPreference * result.ExpectedGainsStdDev;
+                              - expectedGainsStdDevPreference * result.ExpectedGainsStdDev
+                              - equityToBalanceStdDevPreference * result.EquityToBalanceStdDev;
                 }
 
                 return fitness;

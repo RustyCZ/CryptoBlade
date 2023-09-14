@@ -96,7 +96,7 @@ namespace CryptoBlade.Strategies.Policies
                 WaitWhenIpRateLimit(result.Result);
             });
 
-        private static void WaitWhenIpRateLimit<T>(WebCallResult<BybitResponse<T>>? result)
+        private static void WaitWhenIpRateLimit(WebCallResult<BybitResponse<T>>? result)
         {
             if (result == null)
                 return;
@@ -107,7 +107,7 @@ namespace CryptoBlade.Strategies.Policies
             }
         }
 
-        private static void WaitWhenIpRateLimit<T>(WebCallResult<T>? result)
+        private static void WaitWhenIpRateLimit(WebCallResult<T>? result)
         {
             if (result == null)
                 return;

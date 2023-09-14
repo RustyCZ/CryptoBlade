@@ -94,6 +94,20 @@ namespace CryptoBlade.Optimizer
             };
             ga.GenerationRan += (_, _) =>
             {
+                var uniquePopulation = ga.Population.CurrentGeneration.Chromosomes
+                    .Select(x => x.ToString())
+                    .Distinct()
+                    .Count();
+                if (uniquePopulation < ga.Population.CurrentGeneration.Chromosomes.Count)
+                {
+                    ga.MutationProbability *= 2.0f;
+                    if(ga.MutationProbability > 0.8f)
+                        ga.MutationProbability = 0.8f;
+                }
+                else
+                {
+                    ga.MutationProbability = geneticAlgorithmOptions.MutationProbability;
+                }
                 var bestChromosome = ga.Population.BestChromosome;
                 TartagliaChromosome tartagliaChromosome = (TartagliaChromosome)bestChromosome;
                 var clonedOptions = Options.Create(m_options.Value.Clone());

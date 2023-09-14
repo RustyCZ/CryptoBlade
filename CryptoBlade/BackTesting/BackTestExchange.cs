@@ -21,6 +21,7 @@ namespace CryptoBlade.BackTesting
         private readonly HashSet<TickerUpdateSubscription> m_tickerSubscriptions;
         private readonly HashSet<BalanceUpdateSubscription> m_balanceSubscriptions;
         private readonly HashSet<OrderUpdateSubscription> m_orderSubscriptions;
+        private readonly HashSet<NextStepSubscription> m_nextStepSubscriptions;
         private readonly ICbFuturesRestClient m_cbFuturesRestClient;
         private Balance m_currentBalance;
         private readonly Dictionary<string, HashSet<Order>> m_openOrders;
@@ -37,6 +38,7 @@ namespace CryptoBlade.BackTesting
             m_tickerSubscriptions = new HashSet<TickerUpdateSubscription>();
             m_balanceSubscriptions = new HashSet<BalanceUpdateSubscription>();
             m_orderSubscriptions = new HashSet<OrderUpdateSubscription>();
+            m_nextStepSubscriptions = new HashSet<NextStepSubscription>();
             m_candleProcessors = new Dictionary<string, CandleBacktestProcessor>();
             m_backTestDataDownloader = backTestDataDownloader;
             m_historicalDataStorage = historicalDataStorage;
@@ -499,6 +501,13 @@ namespace CryptoBlade.BackTesting
             return Task.FromResult<IUpdateSubscription>(subscription);
         }
 
+        public Task<IUpdateSubscription> SubscribeToNextStepAsync(Action<DateTime> handler, CancellationToken cancel = default)
+        {
+            NextStepSubscription subscription = new NextStepSubscription(this, handler);
+            m_nextStepSubscriptions.Add(subscription);
+            return Task.FromResult<IUpdateSubscription>(subscription);
+        }
+
         public async Task PrepareDataAsync(CancellationToken cancel = default)
         {
             var start = m_options.Value.Start;
@@ -516,6 +525,7 @@ namespace CryptoBlade.BackTesting
             if (m_nextTime.HasValue)
                 m_currentTime = m_nextTime.Value;
             var currentTime = m_currentTime;
+            await NotifyNextStepAsync(currentTime);
             foreach (var backtestProcessor in m_candleProcessors)
             {
                 Candle[] candles = backtestProcessor.Value.AdvanceTime(currentTime);
@@ -780,6 +790,13 @@ namespace CryptoBlade.BackTesting
             return Task.CompletedTask;
         }
 
+        private Task NotifyNextStepAsync(DateTime time)
+        {
+            foreach (var subscription in m_nextStepSubscriptions)
+                subscription.Notify(time);
+            return Task.CompletedTask;
+        }
+
         #region Subscriptions
         private class CandleUpdateSubscription : IUpdateSubscription
         {
@@ -898,6 +915,34 @@ namespace CryptoBlade.BackTesting
             {
                 using var l = await m_exchange.m_lock.LockAsync();
                 m_exchange.m_orderSubscriptions.Remove(this);
+            }
+        }
+
+        private class NextStepSubscription : IUpdateSubscription
+        {
+            private readonly BackTestExchange m_exchange;
+            private readonly Action<DateTime> m_handler;
+
+            public NextStepSubscription(BackTestExchange exchange, Action<DateTime> handler)
+            {
+                m_exchange = exchange;
+                m_handler = handler;
+            }
+
+            public void Notify(DateTime time)
+            {
+                m_handler(time);
+            }
+
+            public void AutoReconnect(ILogger logger)
+            {
+                // no need to reconnect
+            }
+
+            public async Task CloseAsync()
+            {
+                using var l = await m_exchange.m_lock.LockAsync();
+                m_exchange.m_nextStepSubscriptions.Remove(this);
             }
         }
         #endregion // Subscriptions

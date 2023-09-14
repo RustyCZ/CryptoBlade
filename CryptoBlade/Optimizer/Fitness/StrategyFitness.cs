@@ -67,17 +67,17 @@ namespace CryptoBlade.Optimizer.Fitness
                 double runningDaysPreference = fitnessOptions.RunningDaysPreference;
                 double avgDailyGainPreference = fitnessOptions.AvgDailyGainPreference;
                 double lowestEquityToBalancePreference = fitnessOptions.LowestEquityToBalancePreference;
-                double expectedGainsStdDevPreference = fitnessOptions.ExpectedGainsStdDevPreference;
-                double equityToBalanceStdDevPreference = fitnessOptions.EquityToBalanceStdDevPreference;
+                double adgNrmseErrorPreference = fitnessOptions.AdgNrmseErrorPreference;
+                double equityBalanceNrmsePreference = fitnessOptions.EquityBalanceNrmsePreference;
                 double fitness =
                     runningDaysPreference * runningDaysRatio
                     - avgDailyGainPreference
                     - lowestEquityToBalancePreference
-                    - expectedGainsStdDevPreference
-                    - equityToBalanceStdDevPreference;
+                    - adgNrmseErrorPreference
+                    - equityBalanceNrmsePreference;
                 double maxAvgDailyGainPercent = fitnessOptions.MaxAvgDailyGainPercent;
                 double minAvgDailyGainPercent = fitnessOptions.MinAvgDailyGainPercent;
-                if (result.LowestEquityToBalance > 0)
+                if (result.LowestEquityToBalance > 0 && result.AverageDailyGainPercent > 0)
                 {
                     double avgDailyGainPercent = (double)result.AverageDailyGainPercent;
                     avgDailyGainPercent = Math.Max(minAvgDailyGainPercent, avgDailyGainPercent);
@@ -86,8 +86,8 @@ namespace CryptoBlade.Optimizer.Fitness
                     fitness = runningDaysPreference * runningDaysRatio
                               + avgDailyGainPreference * normalizedAvgDailyGainPercent
                               + lowestEquityToBalancePreference * (double)result.LowestEquityToBalance
-                              - expectedGainsStdDevPreference * result.ExpectedGainsStdDev
-                              - equityToBalanceStdDevPreference * result.EquityToBalanceStdDev;
+                              - adgNrmseErrorPreference * result.AdgNormalizedRootMeanSquareError
+                              - equityBalanceNrmsePreference * result.EquityBalanceNormalizedRooMeanSquareError;
                 }
 
                 return fitness;

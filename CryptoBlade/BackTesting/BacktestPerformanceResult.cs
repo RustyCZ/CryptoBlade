@@ -14,8 +14,8 @@
         public int ExpectedDays { get; set; }
         public decimal LossProfitRatio { get; set; }
         public decimal SpotBalance { get; set; }
-        public double EquityToBalanceStdDev { get; set; }
-        public double ExpectedGainsStdDev { get; set; }
+        public double EquityBalanceNormalizedRooMeanSquareError { get; set; }
+        public double AdgNormalizedRootMeanSquareError { get; set; }
         public OpenPositionWithOrders[] OpenPositionWithOrders { get; set; } = Array.Empty<OpenPositionWithOrders>();
     }
 }

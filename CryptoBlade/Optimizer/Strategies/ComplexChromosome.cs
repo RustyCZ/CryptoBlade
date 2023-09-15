@@ -1,4 +1,5 @@
 ﻿using GeneticSharp;
+using System.Globalization;
 
 namespace CryptoBlade.Optimizer.Strategies
 {
@@ -32,6 +33,11 @@ namespace CryptoBlade.Optimizer.Strategies
         public override IChromosome CreateNew()
         {
             return new ComplexChromosome(ComplexGenes);
+        }
+
+        public override Gene GenerateGene(int geneIndex)
+        {
+            return new Gene(RandomizationProvider.Current.GetInt(0, 2));
         }
 
         private static double[] GetMinValues(ComplexGene[] complexGenes)

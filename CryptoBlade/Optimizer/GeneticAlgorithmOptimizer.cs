@@ -52,9 +52,35 @@ namespace CryptoBlade.Optimizer
         {
             var geneticAlgorithmOptions = m_options.Value.Optimizer.GeneticAlgorithm;
             await DownloadDataAsync(cancel);
-            var selection = new TournamentSelection();
+            ISelection selection;
+            switch (geneticAlgorithmOptions.SelectionStrategy)
+            {
+                case SelectionStrategy.RankSelection:
+                    m_logger.LogInformation("Using RankSelection");
+                    selection = new RankSelection();
+                    break;
+                case SelectionStrategy.TournamentSelection:
+                    m_logger.LogInformation("Using TournamentSelection");
+                    selection = new TournamentSelection();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException("Invalid selection strategy");
+            }
             var crossover = new UniformCrossover();
-            var mutation = new FlipBitMutation();
+            IMutation mutation;
+            switch (geneticAlgorithmOptions.MutationStrategy)
+            {
+                case MutationStrategy.FlipBitMutation:
+                    m_logger.LogInformation("Using FlipBitMutation");
+                    mutation = new FlipBitMutation();
+                    break;
+                case MutationStrategy.UniformMutation:
+                    m_logger.LogInformation("Using UniformMutation");
+                    mutation = new UniformMutation(true);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException("Invalid mutation strategy");
+            }
             var historicalDataStorage = HistoricalDataStorageFactory.CreateHistoricalDataStorage(m_options);
             var fitness = new StrategyFitness(m_options, historicalDataStorage, cancel, m_logger);
             var tartagliaOptions = CreateChromosomeOptions<TartagliaChromosomeOptions>(m_options.Value,
@@ -98,15 +124,19 @@ namespace CryptoBlade.Optimizer
                     .Select(x => x.ToString())
                     .Distinct()
                     .Count();
-                if (uniquePopulation < ga.Population.CurrentGeneration.Chromosomes.Count)
+                if (uniquePopulation < ga.Population.CurrentGeneration.Chromosomes.Count 
+                    && ga.MutationProbability <= geneticAlgorithmOptions.MaxMutationProbability)
                 {
-                    ga.MutationProbability *= 2.0f;
-                    if(ga.MutationProbability > 0.8f)
-                        ga.MutationProbability = 0.8f;
+                    // Increase mutation probability if the population is not diverse enough
+                    ga.MutationProbability *= geneticAlgorithmOptions.MutationMultiplier;
+                    if(ga.MutationProbability > geneticAlgorithmOptions.MaxMutationProbability)
+                        ga.MutationProbability = geneticAlgorithmOptions.MaxMutationProbability;
+                    m_logger.LogInformation($"Mutation probability increased to {ga.MutationProbability}");
                 }
                 else
                 {
                     ga.MutationProbability = geneticAlgorithmOptions.MutationProbability;
+                    m_logger.LogInformation($"Mutation probability reset to {ga.MutationProbability}");
                 }
                 var bestChromosome = ga.Population.BestChromosome;
                 TartagliaChromosome tartagliaChromosome = (TartagliaChromosome)bestChromosome;

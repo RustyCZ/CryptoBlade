@@ -24,10 +24,14 @@ services:
         - CB_TradingBot__BackTest__DataSource=Binance
         - CB_TradingBot__BackTest__InitialUntradableDays=-2000
         - CB_TradingBot__Optimizer__GeneticAlgorithm__GenerationCount=1000
-        - CB_TradingBot__Optimizer__GeneticAlgorithm__MutationProbability=0.3
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__MutationProbability=0.05
         - CB_TradingBot__Optimizer__GeneticAlgorithm__CrossoverProbability=0.95
-        - CB_TradingBot__Optimizer__GeneticAlgorithm__MinPopulationSize=50
-        - CB_TradingBot__Optimizer__GeneticAlgorithm__MaxPopulationSize=50
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__MinPopulationSize=200
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__MaxPopulationSize=200
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__MutationStrategy=UniformMutation
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__SelectionStrategy=RankSelection
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__MutationMultiplier=2.0
+        - CB_TradingBot__Optimizer__GeneticAlgorithm__MaxMutationProbability=0.8
         - CB_TradingBot__Optimizer__GeneticAlgorithm__FitnessOptions__RunningDaysPreference=0.1
         - CB_TradingBot__Optimizer__GeneticAlgorithm__FitnessOptions__AvgDailyGainPreference=1.0
         - CB_TradingBot__Optimizer__GeneticAlgorithm__FitnessOptions__LowestEquityToBalancePreference=0

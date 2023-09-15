@@ -35,6 +35,10 @@
                             minIntValue = 0;
                         }
                         int totalBits = (int)Math.Ceiling(Math.Log(maxIntValue + 1, 2));
+                        if (totalBits == 0)
+                            totalBits = 1;
+                        if (totalBits > 64)
+                            totalBits = 64;
                         return new ComplexValueRepresentation(minIntValue, maxIntValue, totalBits, 0);
                     case ComplexGeneType.Float:
                         float minFloatValue = MinFloatValue;
@@ -46,6 +50,10 @@
                         }
                         var maxLongValue = Convert.ToInt64(maxFloatValue * Math.Pow(10, FractionDigits));
                         var totalBits2 = (int)Math.Ceiling(Math.Log(maxLongValue + 1, 2));
+                        if (totalBits2 == 0)
+                            totalBits2 = 1;
+                        if (totalBits2 > 64)
+                            totalBits2 = 64;
                         return new ComplexValueRepresentation(minFloatValue, maxFloatValue, totalBits2, FractionDigits);
                     default:
                         throw new ArgumentOutOfRangeException();

@@ -13,7 +13,7 @@ namespace CryptoBlade.BackTesting
 {
     public class BackTestPerformanceTracker : IHostedService
     {
-        private readonly record struct BalanceInTime(Balance Balance, DateTime Time);
+        private readonly record struct BalanceInTime(Balance Balance, decimal TotalBalance, DateTime Time);
         private readonly record struct ScatterPlotPoint(double X, double Y);
 
         private readonly IOptions<BackTestPerformanceTrackerOptions> m_options;
@@ -25,29 +25,23 @@ namespace CryptoBlade.BackTesting
         private readonly List<BalanceInTime> m_balanceHistory;
         private readonly AsyncLock m_lock;
         private readonly string m_testId;
-        private readonly IHostApplicationLifetime m_applicationLifetime;
         private readonly ILogger<BackTestPerformanceTracker> m_logger;
         private readonly IOptions<TradingBotOptions> m_tradingBotOptions;
         private decimal m_totalLoss;
         private decimal m_totalProfit;
         private BalanceInTime m_lastBalance;
-        private decimal m_spotBalance;
         private decimal m_initialSpot;
         private bool m_resultsSaved;
-        private decimal m_initialFutures;
-        private decimal m_minFuturesEquity;
 
         public BackTestPerformanceTracker(IOptions<BackTestPerformanceTrackerOptions> options,
             IOptions<TradingBotOptions> tradingBotOptions,
             BackTestExchange backTestExchange, 
-            IHostApplicationLifetime applicationLifetime,
             IBackTestIdProvider backTestIdProvider,
             ILogger<BackTestPerformanceTracker> logger)
         {
             m_balanceHistory = new List<BalanceInTime>();
             m_lowestEquityToBalance = 1.0m;
             m_backTestExchange = backTestExchange;
-            m_applicationLifetime = applicationLifetime;
             m_logger = logger;
             m_options = options;
             m_lock = new AsyncLock();
@@ -62,19 +56,24 @@ namespace CryptoBlade.BackTesting
         {
             var balance = await m_backTestExchange.GetBalancesAsync(cancellationToken);
             m_localTopBalance = balance.WalletBalance!.Value;
-            m_initialFutures = balance.WalletBalance!.Value;
+            //m_initialFutures = balance.WalletBalance!.Value;
             if (m_tradingBotOptions.Value.SpotRebalancingRatio > 0)
             {
-                var futuresBalance = m_localTopBalance * m_tradingBotOptions.Value.SpotRebalancingRatio;
-                m_minFuturesEquity = Math.Min(futuresBalance * 0.01m, 1);
-                m_spotBalance = m_localTopBalance - futuresBalance;
-                m_initialSpot = m_spotBalance;
-                await m_backTestExchange.MoveFromFuturesToSpotAsync(m_spotBalance, cancellationToken);
+                var initialFutures = balance.WalletBalance!.Value;
+                var rebalancingRatio = m_tradingBotOptions.Value.SpotRebalancingRatio;
+                if (rebalancingRatio > 1)
+                    rebalancingRatio = 1;
+                var desiredSpot = initialFutures * rebalancingRatio;
+                m_initialSpot = desiredSpot;
+                await m_backTestExchange.MoveFromFuturesToSpotAsync(desiredSpot, cancellationToken);
                 balance = await m_backTestExchange.GetBalancesAsync(cancellationToken);
             }
             m_maxDrawDown = 0.0m;
             var time = m_backTestExchange.CurrentTime;
-            m_lastBalance = new BalanceInTime(balance, time);
+            var totalBalance = m_backTestExchange.SpotBalance;
+            if (balance.WalletBalance.HasValue)
+                totalBalance += balance.WalletBalance.Value;
+            m_lastBalance = new BalanceInTime(balance, totalBalance, time);
             m_balanceHistory.Add(m_lastBalance);
             m_nextStepSubscription = await m_backTestExchange.SubscribeToNextStepAsync(OnNextStep, cancellationToken);
         }
@@ -87,29 +86,19 @@ namespace CryptoBlade.BackTesting
 
         private async void OnWalletUpdate(Balance obj)
         {
-            decimal? moveSpotAmount = null;
-            decimal? moveFuturesAmount = null;
             using (m_lock.Lock())
             {
                 var lastBalance = m_balanceHistory.Last();
                 var time = m_backTestExchange.CurrentTime;
                 var profitChange = obj.RealizedPnl!.Value - m_lastBalance.Balance.RealizedPnl!.Value;
-                var profitChangeToTrading = profitChange;
-                if (m_tradingBotOptions.Value.SpotRebalancingRatio > 0 
-                    && profitChange > 0 
-                    && obj.WalletBalance!.Value > m_initialFutures)
-                {
-                    profitChangeToTrading *= m_tradingBotOptions.Value.SpotRebalancingRatio;
-                    var profitChangeToSpot = profitChange - profitChangeToTrading;
-                    m_spotBalance += profitChangeToSpot;
-                    moveFuturesAmount = profitChangeToTrading;
-                }
-
                 if (profitChange > 0)
                     m_totalProfit += profitChange;
                 else
                     m_totalLoss += Math.Abs(profitChange);
-                m_lastBalance = new BalanceInTime(obj, time);
+                var totalBalance = m_backTestExchange.SpotBalance;
+                if (obj.WalletBalance.HasValue)
+                    totalBalance += obj.WalletBalance.Value;
+                m_lastBalance = new BalanceInTime(obj, totalBalance, time);
                 decimal equityToBalance;
                 if (obj.WalletBalance!.Value <= 0)
                     equityToBalance = 0;
@@ -117,42 +106,42 @@ namespace CryptoBlade.BackTesting
                     equityToBalance = obj.Equity!.Value / obj.WalletBalance!.Value;
                 if (equityToBalance < m_lowestEquityToBalance)
                     m_lowestEquityToBalance = equityToBalance;
-                var walletBalance = obj.WalletBalance!.Value;
-                if (walletBalance > m_localTopBalance)
-                    m_localTopBalance = walletBalance;
-                var drawDown = 1.0m - (walletBalance / m_localTopBalance);
+                if (totalBalance > m_localTopBalance)
+                    m_localTopBalance = totalBalance;
+                var drawDown = 1.0m - (totalBalance / m_localTopBalance);
                 if (drawDown > m_maxDrawDown)
                     m_maxDrawDown = drawDown;
-                if (obj.WalletBalance <= m_minFuturesEquity)
-                {
-                    if (m_spotBalance > 0 && m_tradingBotOptions.Value.SpotRebalancingRatio > 0)
-                    {
-                        var amount = m_spotBalance * m_tradingBotOptions.Value.SpotRebalancingRatio;
-                        m_spotBalance -= amount;
-                        moveSpotAmount = amount;
-                    }
-                    else
-                    {
-                        m_balanceHistory.Add(new BalanceInTime(obj, time));
-                        await SaveBacktestResultsAsync();
-                        m_applicationLifetime.StopApplication();
-                    }
-                }
+
                 if (time > lastBalance.Time || (obj.WalletBalance.HasValue && obj.WalletBalance.Value <= 0))
                 {
-                    m_balanceHistory.Add(new BalanceInTime(obj, time));
+                    var totalBal = m_backTestExchange.SpotBalance;
+                    if (obj.WalletBalance.HasValue)
+                        totalBal += obj.WalletBalance.Value;
+                    m_balanceHistory.Add(new BalanceInTime(obj, totalBal, time));
                 }
             }
 
             // it needs to happen outside of the lock to avoid deadlocks
-            if(moveFuturesAmount != null)
-                await m_backTestExchange.MoveFromFuturesToSpotAsync(moveFuturesAmount.Value, CancellationToken.None);
-
-            if (moveSpotAmount != null)
+            if (m_tradingBotOptions.Value.SpotRebalancingRatio > 0)
             {
-                await m_backTestExchange.ClearPositionsAndOrders();
-                m_logger.LogInformation("Moving {amount} from spot to futures. Remaining spot {spot}", moveSpotAmount.Value, m_spotBalance);
-                await m_backTestExchange.MoveFromSpotToFuturesAsync(moveSpotAmount.Value, CancellationToken.None);
+                var spotBalance = m_backTestExchange.SpotBalance;
+                var totalBalance = spotBalance;
+                if (obj.WalletBalance.HasValue)
+                    totalBalance += obj.WalletBalance.Value;
+                var rebalancingRatio = m_tradingBotOptions.Value.SpotRebalancingRatio;
+                if (rebalancingRatio > 1)
+                    rebalancingRatio = 1;
+                var desiredSpot = totalBalance * rebalancingRatio;
+                var spotDiff = desiredSpot - spotBalance;
+                const decimal minDiffPercent = 0.005m;
+                if (spotDiff > 0 && spotDiff > minDiffPercent * totalBalance)
+                {
+                    await m_backTestExchange.MoveFromFuturesToSpotAsync(spotDiff, CancellationToken.None);
+                }
+                else if (spotDiff < 0 && spotDiff < -minDiffPercent * totalBalance)
+                {
+                    await m_backTestExchange.MoveFromSpotToFuturesAsync(-spotDiff, CancellationToken.None);
+                }
             }
         }
 
@@ -168,29 +157,34 @@ namespace CryptoBlade.BackTesting
             OnWalletUpdate(balance);
             using (await m_lock.LockAsync(cancellationToken))
             {
-                try
-                {
-                    await SaveBacktestResultsAsync();
-                }
-                catch (Exception e)
-                {
-                    m_logger.LogError(e, "Failed to save backtest results");
-                }
-                try
-                {
-                    PlotBalanceAndEquity();
-                }
-                catch (Exception e)
-                {
-                    m_logger.LogError(e, "Failed to plot balance and equity");
-                }
+                await CreateReportAsync();
+            }
+        }
+
+        private async Task CreateReportAsync()
+        {
+            try
+            {
+                await SaveBacktestResultsAsync();
+            }
+            catch (Exception e)
+            {
+                m_logger.LogError(e, "Failed to save backtest results");
+            }
+            try
+            {
+                PlotBalanceAndEquity();
+            }
+            catch (Exception e)
+            {
+                m_logger.LogError(e, "Failed to plot balance and equity");
             }
         }
 
         private decimal CalculateAverageDailyGain()
         {
             decimal initialBalance = m_balanceHistory.First().Balance.WalletBalance!.Value + m_initialSpot;
-            decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value + m_spotBalance;
+            decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value + m_backTestExchange.SpotBalance;
             decimal dailyGainPercent;
             int numberOfDays = (int)Math.Round((m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays);
 
@@ -215,7 +209,7 @@ namespace CryptoBlade.BackTesting
             if(m_resultsSaved)
                 return;
             decimal initialBalance = m_balanceHistory.First().Balance.WalletBalance!.Value + m_initialSpot;
-            decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value + m_spotBalance;
+            decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value + m_backTestExchange.SpotBalance;
             decimal finalEquity = m_balanceHistory.Last().Balance.Equity!.Value;
             int numberOfDays = (int)Math.Round((m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays);
             decimal dailyGainPercent = CalculateAverageDailyGain();
@@ -239,7 +233,7 @@ namespace CryptoBlade.BackTesting
                 ExpectedDays = (int)(m_tradingBotOptions.Value.BackTest.End - m_tradingBotOptions.Value.BackTest.Start).TotalDays,
                 MaxDrawDown = m_maxDrawDown,
                 LossProfitRatio = lossProfitRatio,
-                SpotBalance = m_spotBalance,
+                SpotBalance = m_backTestExchange.SpotBalance,
                 EquityBalanceNormalizedRooMeanSquareError = nrmseBalance,
                 AdgNormalizedRootMeanSquareError = nrmseAdg,
             };
@@ -267,13 +261,11 @@ namespace CryptoBlade.BackTesting
         {
             if (sampledBalanceHistory.Count == 0)
                 return 0;
-            if (sampledBalanceHistory.Any(x => !x.Balance.WalletBalance.HasValue || x.Balance.WalletBalance.Value <= 0))
-                return 0;
             var equity = sampledBalanceHistory
                 .Select(b => (double)b.Balance.Equity!.Value)
                 .ToArray();
             var balance = sampledBalanceHistory
-                .Select(b => (double)b.Balance.WalletBalance!.Value)
+                .Select(b => (double)b.TotalBalance)
                 .ToArray();
             var cvrmse = TradingHelpers.NormalizedRootMeanSquareError(balance, equity);
             if (cvrmse.IsInfiniteOrNaN())
@@ -287,8 +279,6 @@ namespace CryptoBlade.BackTesting
                 return 0;
             if (averageDailyGainPercent <= 0)
                 return 0;
-            if (sampledBalanceHistory.Any(x => !x.Balance.WalletBalance.HasValue || x.Balance.WalletBalance.Value <= 0))
-                return 0;
             decimal initialBalance = m_balanceHistory.First().Balance.WalletBalance!.Value + m_initialSpot;
             var expectedBalance = sampledBalanceHistory
                 .Select(b =>
@@ -301,7 +291,7 @@ namespace CryptoBlade.BackTesting
                 })
                 .ToArray();
             var sampledBalance = sampledBalanceHistory
-                .Select(b => (double)b.Balance.WalletBalance!.Value)
+                .Select(b => (double)b.TotalBalance)
                 .ToArray();
             var cvrmse = TradingHelpers.NormalizedRootMeanSquareError(expectedBalance, sampledBalance);
             if (cvrmse.IsInfiniteOrNaN())
@@ -336,6 +326,17 @@ namespace CryptoBlade.BackTesting
                 equityInTime.Select(x => x.X).ToArray(),
                 equityInTime.Select(x => x.Y).ToArray(),
                 Color.FromARGB((uint)System.Drawing.Color.DarkOrange.ToArgb()));
+
+            if (m_tradingBotOptions.Value.SpotRebalancingRatio > 0)
+            {
+                var totalWalletBalanceInTime = m_balanceHistory
+                    .Select(x => new ScatterPlotPoint((x.Time - startTime).TotalMinutes, (double)x.TotalBalance))
+                    .ToArray();
+                plt.Add.Scatter(
+                    totalWalletBalanceInTime.Select(x => x.X).ToArray(),
+                    totalWalletBalanceInTime.Select(x => x.Y).ToArray(),
+                    Color.FromARGB((uint)System.Drawing.Color.Purple.ToArgb()));
+            }
 
             if (m_balanceHistory.Count > 0)
             {

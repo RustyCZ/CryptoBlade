@@ -67,7 +67,6 @@ namespace CryptoBlade.Optimizer
             BackTestPerformanceTracker backTestPerformanceTracker = new BackTestPerformanceTracker(
                 backTestPerformanceTrackerOptions, options,
                 backTestExchange,
-                backtestLifeTime,
                 externalBackTestIdProvider,
                 ApplicationLogging.CreateLogger<BackTestPerformanceTracker>());
             TradingHostedService tradingHostedService =

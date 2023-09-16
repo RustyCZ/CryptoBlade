@@ -77,7 +77,7 @@ namespace CryptoBlade.Optimizer.Fitness
                     - equityBalanceNrmsePreference;
                 double maxAvgDailyGainPercent = fitnessOptions.MaxAvgDailyGainPercent;
                 double minAvgDailyGainPercent = fitnessOptions.MinAvgDailyGainPercent;
-                if (result.LowestEquityToBalance > 0 && result.AverageDailyGainPercent > 0)
+                if (result.FinalBalance > 0 && result.AverageDailyGainPercent > 0)
                 {
                     double avgDailyGainPercent = (double)result.AverageDailyGainPercent;
                     avgDailyGainPercent = Math.Max(minAvgDailyGainPercent, avgDailyGainPercent);

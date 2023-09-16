@@ -255,6 +255,7 @@ namespace CryptoBlade.Optimizer
                     config.Optimizer.TradingBot.CriticalModelWalletExposureThresholdLong,
                 CriticalModelWalletExposureThresholdShort =
                     config.Optimizer.TradingBot.CriticalModelWalletExposureThresholdShort,
+                SpotRebalancingRatio = config.Optimizer.TradingBot.SpotRebalancingRatio,
             };
             optionsSetup(options);
             return Options.Create(options);

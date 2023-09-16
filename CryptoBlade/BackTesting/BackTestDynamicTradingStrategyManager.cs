@@ -56,10 +56,15 @@ namespace CryptoBlade.BackTesting
                 return canContinue;
             }
             var balances = await m_backTestExchange.GetBalancesAsync(cancel);
-            if (!balances.WalletBalance.HasValue || balances.WalletBalance.Value <= 0)
+            var spot = m_backTestExchange.SpotBalance;
+            var totalBalance = spot;
+            if (balances.WalletBalance.HasValue)
+                totalBalance += balances.WalletBalance.Value;
+            
+            if (totalBalance <= 0)
             {
-                m_hostApplicationLifetime.StopApplication();
                 canContinue = false;
+                m_hostApplicationLifetime.StopApplication();
             }
             return canContinue;
         }

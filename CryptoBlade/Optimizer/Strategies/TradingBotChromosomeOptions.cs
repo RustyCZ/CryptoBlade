@@ -28,5 +28,6 @@
         public OptimizerBoolRange EnableCriticalModeShort { get; set; } = new OptimizerBoolRange(false, true);
         public OptimizerFloatRange CriticalModelWalletExposureThresholdLong { get; set; } = new OptimizerFloatRange(0.0f, 3.0f, 2);
         public OptimizerFloatRange CriticalModelWalletExposureThresholdShort { get; set; } = new OptimizerFloatRange(0.0f, 3.0f, 2);
+        public OptimizerFloatRange SpotRebalancingRatio { get; set; } = new OptimizerFloatRange(0.0f, 1.0f, 2);
     }
 }

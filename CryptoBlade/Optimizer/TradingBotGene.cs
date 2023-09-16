@@ -28,5 +28,6 @@
         EnableCriticalModeShort,
         CriticalModelWalletExposureThresholdLong,
         CriticalModelWalletExposureThresholdShort,
+        SpotRebalancingRatio
     }
 }

@@ -40,6 +40,7 @@ namespace CryptoBlade.Optimizer.Strategies
             options.CriticalMode.EnableCriticalModeShort = genes[(int)TradingBotGene.EnableCriticalModeShort + offset].BoolValue;
             options.CriticalMode.WalletExposureThresholdLong = Convert.ToDecimal(genes[(int)TradingBotGene.CriticalModelWalletExposureThresholdLong + offset].FloatValue);
             options.CriticalMode.WalletExposureThresholdShort = Convert.ToDecimal(genes[(int)TradingBotGene.CriticalModelWalletExposureThresholdShort + offset].FloatValue);
+            options.SpotRebalancingRatio = Convert.ToDecimal(genes[(int)TradingBotGene.SpotRebalancingRatio + offset].FloatValue);
         }
 
         protected static void AddTradingBotGenesFromOptions(IOptions<TradingBotChromosomeOptions> options, ComplexGene[] genes, int offset)
@@ -70,6 +71,7 @@ namespace CryptoBlade.Optimizer.Strategies
             genes[(int)TradingBotGene.EnableCriticalModeShort + offset] = options.Value.EnableCriticalModeShort.ToComplexGene();
             genes[(int)TradingBotGene.CriticalModelWalletExposureThresholdLong + offset] = options.Value.CriticalModelWalletExposureThresholdLong.ToComplexGene();
             genes[(int)TradingBotGene.CriticalModelWalletExposureThresholdShort + offset] = options.Value.CriticalModelWalletExposureThresholdShort.ToComplexGene();
+            genes[(int)TradingBotGene.SpotRebalancingRatio + offset] = options.Value.SpotRebalancingRatio.ToComplexGene();
         }
 
         protected static int GetGeneLength<T>() where T : Enum

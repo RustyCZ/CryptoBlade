@@ -53,6 +53,8 @@ namespace CryptoBlade.BackTesting
         
         public DateTime CurrentTime => m_currentTime;
 
+        public decimal SpotBalance { get; private set; }
+
         public Task<OpenPositionWithOrders[]> GetOpenPositionsWithOrdersAsync(CancellationToken cancel = default)
         {
             return Task.FromResult(m_longPositions.Values.Concat(m_shortPositions.Values).ToArray().Select(x => x.Clone()).ToArray());
@@ -578,6 +580,7 @@ namespace CryptoBlade.BackTesting
             var equity = walletBalance + balance.UnrealizedPnl;
             var newBalance = balance with { Equity = equity, WalletBalance = walletBalance };
             m_currentBalance = newBalance;
+            SpotBalance -= amount;
             await NotifyBalanceAsync(newBalance);
         }
 
@@ -588,6 +591,7 @@ namespace CryptoBlade.BackTesting
             var equity = walletBalance + balance.UnrealizedPnl;
             var newBalance = balance with { Equity = equity, WalletBalance = walletBalance };
             m_currentBalance = newBalance;
+            SpotBalance += amount;
             await NotifyBalanceAsync(newBalance);
         }
 

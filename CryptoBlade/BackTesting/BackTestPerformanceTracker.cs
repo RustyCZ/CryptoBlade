@@ -95,29 +95,44 @@ namespace CryptoBlade.BackTesting
                     m_totalProfit += profitChange;
                 else
                     m_totalLoss += Math.Abs(profitChange);
-                var totalBalance = m_backTestExchange.SpotBalance;
+                var spotBalance = m_backTestExchange.SpotBalance;
+                var totalBalance = spotBalance;
                 if (obj.WalletBalance.HasValue)
                     totalBalance += obj.WalletBalance.Value;
                 m_lastBalance = new BalanceInTime(obj, totalBalance, time);
                 decimal equityToBalance;
-                if (obj.WalletBalance!.Value <= 0)
+                if (totalBalance <= 0)
                     equityToBalance = 0;
                 else
-                    equityToBalance = obj.Equity!.Value / obj.WalletBalance!.Value;
+                {
+                    try
+                    {
+                        equityToBalance = (decimal)Math.Round((double)(obj.Equity!.Value + spotBalance) / (double)totalBalance, 3);
+                    }
+                    catch (OverflowException)
+                    {
+                        equityToBalance = 0;
+                    }
+                }
                 if (equityToBalance < m_lowestEquityToBalance)
                     m_lowestEquityToBalance = equityToBalance;
                 if (totalBalance > m_localTopBalance)
                     m_localTopBalance = totalBalance;
-                var drawDown = 1.0m - (totalBalance / m_localTopBalance);
+                decimal drawDown = 1.0m;
+                try
+                {
+                    drawDown = 1.0m - (totalBalance / m_localTopBalance);
+                }
+                catch (OverflowException)
+                {
+                }
+                
                 if (drawDown > m_maxDrawDown)
                     m_maxDrawDown = drawDown;
 
-                if (time > lastBalance.Time || (obj.WalletBalance.HasValue && obj.WalletBalance.Value <= 0))
+                if (time > lastBalance.Time || (totalBalance <= 0))
                 {
-                    var totalBal = m_backTestExchange.SpotBalance;
-                    if (obj.WalletBalance.HasValue)
-                        totalBal += obj.WalletBalance.Value;
-                    m_balanceHistory.Add(new BalanceInTime(obj, totalBal, time));
+                    m_balanceHistory.Add(new BalanceInTime(obj, totalBalance, time));
                 }
             }
 
@@ -265,7 +280,7 @@ namespace CryptoBlade.BackTesting
                 .Select(b => (double)b.Balance.Equity!.Value)
                 .ToArray();
             var balance = sampledBalanceHistory
-                .Select(b => (double)b.TotalBalance)
+                .Select(b => (double)(b.Balance.WalletBalance ?? 0))
                 .ToArray();
             var cvrmse = TradingHelpers.NormalizedRootMeanSquareError(balance, equity);
             if (cvrmse.IsInfiniteOrNaN())

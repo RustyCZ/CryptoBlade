@@ -441,13 +441,10 @@ namespace CryptoBlade.Strategies.Common
             var ticker = Ticker;
             if(ticker == null)
                 return false;
-            var dynamicQtyLong = DynamicQtyLong;
-            if(dynamicQtyLong == null)
-                return false;
 
             decimal unstuckQuantity = forceKill
                 ? longPosition.Quantity
-                : CalculateUnstuckingQuantity(longPosition.Quantity, force, dynamicQtyLong.Value);
+                : CalculateUnstuckingQuantity(longPosition.Quantity, force);
 
             foreach (Order longTakeProfitOrder in longTakeProfitOrders)
             {
@@ -468,13 +465,10 @@ namespace CryptoBlade.Strategies.Common
             var ticker = Ticker;
             if (ticker == null)
                 return false;
-            var dynamicQtyShort = DynamicQtyShort;
-            if (dynamicQtyShort == null)
-                return false;
 
             decimal unstuckQuantity = forceKill 
                 ? shortPosition.Quantity 
-                : CalculateUnstuckingQuantity(shortPosition.Quantity, force, dynamicQtyShort.Value);
+                : CalculateUnstuckingQuantity(shortPosition.Quantity, force);
 
             foreach (Order shortTakeProfitOrder in shortTakeProfitOrders)
             {
@@ -486,10 +480,10 @@ namespace CryptoBlade.Strategies.Common
             return orderPlaced;
         }
 
-        private decimal CalculateUnstuckingQuantity(decimal positionQuantity, bool force, decimal dynamicQuantity)
+        private decimal CalculateUnstuckingQuantity(decimal positionQuantity, bool force)
         {
-            if (!SymbolInfo.QtyStep.HasValue)
-                return dynamicQuantity;
+            if(!SymbolInfo.QtyStep.HasValue)
+                return positionQuantity; // this should not happen
 
             decimal unstuckQuantity;
             if (force)
@@ -498,8 +492,6 @@ namespace CryptoBlade.Strategies.Common
                 unstuckQuantity = positionQuantity * m_options.Value.SlowUnstuckPercentStep;
 
             unstuckQuantity -= (unstuckQuantity % SymbolInfo.QtyStep.Value);
-            if (unstuckQuantity < dynamicQuantity)
-                unstuckQuantity = dynamicQuantity;
             if(unstuckQuantity > positionQuantity)
                 unstuckQuantity = positionQuantity;
 

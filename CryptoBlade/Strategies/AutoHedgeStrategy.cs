@@ -132,14 +132,14 @@ namespace CryptoBlade.Strategies
 
                 if (ticker != null && longPosition != null)
                 {
-                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistance);
+                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistanceLong);
                     if (ticker.BestBidPrice < rebuyPrice)
                         hasMinLongPriceDistance = hasBuySignal;
                 }
 
                 if (ticker != null && shortPosition != null)
                 {
-                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistance);
+                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistanceShort);
                     if (ticker.BestAskPrice > resellPrice)
                         hasMinShortPriceDistance = hasSellSignal;
                 }

@@ -21,22 +21,22 @@ namespace CryptoBlade.Strategies
         public ITradingStrategy CreateStrategy(TradingBotOptions config, string symbol)
         {
             string strategyName = config.StrategyName;
-            if (string.Equals("AutoHedge", strategyName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(StrategyNames.AutoHedge, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateAutoHedgeStrategy(config, symbol);
 
-            if (string.Equals("MfiRsiCandlePrecise", strategyName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(StrategyNames.MfiRsiCandlePrecise, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateMfiRsiCandlePreciseStrategy(config, symbol);
 
-            if (string.Equals("MfiRsiEriTrend", strategyName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(StrategyNames.MfiRsiEriTrend, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateMfiRsiEriTrendPreciseStrategy(config, symbol);
 
-            if (string.Equals("LinearRegression", strategyName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(StrategyNames.LinearRegression, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateLinearRegressionStrategy(config, symbol);
 
-            if (string.Equals("Tartaglia", strategyName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(StrategyNames.Tartaglia, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateTartagliaStrategy(config, symbol);
 
-            if (string.Equals("Mona", strategyName, StringComparison.OrdinalIgnoreCase))
+            if (string.Equals(StrategyNames.Mona, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateMonaStrategy(config, symbol);
 
             return CreateAutoHedgeStrategy(config, symbol);
@@ -49,7 +49,8 @@ namespace CryptoBlade.Strategies
                 {
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
-                    strategyOptions.MinReentryPositionDistance = config.Strategies.AutoHedge.MinReentryPositionDistance;
+                    strategyOptions.MinReentryPositionDistanceLong = config.Strategies.AutoHedge.MinReentryPositionDistanceLong;
+                    strategyOptions.MinReentryPositionDistanceShort = config.Strategies.AutoHedge.MinReentryPositionDistanceShort;
                 });
             return new AutoHedgeStrategy(options, symbol, m_walletManager, m_restClient);
         }

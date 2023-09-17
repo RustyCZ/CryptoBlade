@@ -6,7 +6,9 @@ using CryptoBlade.Exchanges;
 using CryptoBlade.Helpers;
 using CryptoBlade.Optimizer.Fitness;
 using CryptoBlade.Optimizer.Strategies;
+using CryptoBlade.Optimizer.Strategies.AutoHedge;
 using CryptoBlade.Optimizer.Strategies.Tartaglia;
+using CryptoBlade.Strategies;
 using GeneticSharp;
 using Microsoft.Extensions.Options;
 
@@ -83,19 +85,36 @@ namespace CryptoBlade.Optimizer
             }
             var historicalDataStorage = HistoricalDataStorageFactory.CreateHistoricalDataStorage(m_options);
             var fitness = new StrategyFitness(m_options, historicalDataStorage, cancel, m_logger);
-            var tartagliaOptions = CreateChromosomeOptions<TartagliaChromosomeOptions>(m_options.Value,
-                options =>
-                {
-                    options.ChannelLengthLong = m_options.Value.Optimizer.Tartaglia.ChannelLengthLong;
-                    options.ChannelLengthShort = m_options.Value.Optimizer.Tartaglia.ChannelLengthShort;
-                    options.StandardDeviationLong = m_options.Value.Optimizer.Tartaglia.StandardDeviationLong;
-                    options.StandardDeviationShort = m_options.Value.Optimizer.Tartaglia.StandardDeviationShort;
-                    options.MinReentryPositionDistanceLong =
-                        m_options.Value.Optimizer.Tartaglia.MinReentryPositionDistanceLong;
-                    options.MinReentryPositionDistanceShort = m_options.Value.Optimizer.Tartaglia
-                        .MinReentryPositionDistanceShort;
-                });
-            var chromosome = new TartagliaChromosome(tartagliaOptions);
+            IChromosome chromosome;
+            switch (m_options.Value.StrategyName)
+            {
+                case StrategyNames.Tartaglia:
+                    var tartagliaOptions = CreateChromosomeOptions<TartagliaChromosomeOptions>(m_options.Value,
+                        options =>
+                        {
+                            options.ChannelLengthLong = m_options.Value.Optimizer.Tartaglia.ChannelLengthLong;
+                            options.ChannelLengthShort = m_options.Value.Optimizer.Tartaglia.ChannelLengthShort;
+                            options.StandardDeviationLong = m_options.Value.Optimizer.Tartaglia.StandardDeviationLong;
+                            options.StandardDeviationShort = m_options.Value.Optimizer.Tartaglia.StandardDeviationShort;
+                            options.MinReentryPositionDistanceLong =
+                                m_options.Value.Optimizer.Tartaglia.MinReentryPositionDistanceLong;
+                            options.MinReentryPositionDistanceShort = m_options.Value.Optimizer.Tartaglia
+                                .MinReentryPositionDistanceShort;
+                        });
+                    chromosome = new TartagliaChromosome(tartagliaOptions);
+                    break;
+                case StrategyNames.AutoHedge:
+                    var autoHedgeOptions = CreateChromosomeOptions<AutoHedgeChromosomeOptions>(m_options.Value,
+                        options =>
+                        {
+                            options.MinReentryPositionDistanceLong = m_options.Value.Optimizer.AutoHedge.MinReentryPositionDistanceLong;
+                            options.MinReentryPositionDistanceShort = m_options.Value.Optimizer.AutoHedge.MinReentryPositionDistanceShort;
+                        });
+                    chromosome = new AutoHedgeChromosome(autoHedgeOptions);
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException("Invalid strategy name");
+            }
             const string optimizerDirectory = "OptimizerResults";
             var resultsDir = m_options.Value.Optimizer.SessionId;
             if (!Directory.Exists(optimizerDirectory))
@@ -139,9 +158,9 @@ namespace CryptoBlade.Optimizer
                     m_logger.LogInformation($"Mutation probability reset to {ga.MutationProbability}");
                 }
                 var bestChromosome = ga.Population.BestChromosome;
-                TartagliaChromosome tartagliaChromosome = (TartagliaChromosome)bestChromosome;
+                TradingBotChromosome tradingBotChromosome = (TradingBotChromosome)bestChromosome;
                 var clonedOptions = Options.Create(m_options.Value.Clone());
-                tartagliaChromosome.ApplyGenesToTradingBotOptions(clonedOptions.Value);
+                tradingBotChromosome.ApplyGenesToTradingBotOptions(clonedOptions.Value);
                 int generationDecimalNumbers = (int)Math.Log10(geneticAlgorithmOptions.GenerationCount) + 1;
                 var generationDir = Path.Combine(targetDir,
                     $"Generation_{ga.GenerationsNumber.ToString($"D{generationDecimalNumbers}")}");

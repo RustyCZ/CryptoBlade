@@ -1,5 +1,6 @@
 ﻿using Binance.Net.Enums;
 using Binance.Net.Interfaces;
+using Binance.Net.Objects.Models.Futures;
 using CryptoBlade.Models;
 
 namespace CryptoBlade.Mapping
@@ -44,6 +45,15 @@ namespace CryptoBlade.Mapping
                 Volume = kline.QuoteVolume,
                 StartTime = kline.OpenTime,
                 TimeFrame = timeFrame,
+            };
+        }
+
+        public static FundingRate ToFundingRate(this BinanceFuturesFundingRateHistory fundingRate)
+        {
+            return new FundingRate
+            {
+                Rate = fundingRate.FundingRate,
+                Time = fundingRate.FundingTime,
             };
         }
     }

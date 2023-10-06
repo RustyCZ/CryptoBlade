@@ -119,5 +119,18 @@ namespace CryptoBlade.Exchanges
         {
             throw new NotImplementedException();
         }
+
+        public async Task<FundingRate[]> GetFundingRatesAsync(string symbol, DateTime start, DateTime end, CancellationToken cancel = default)
+        {
+            var dataResponse = await m_binanceRestClient.UsdFuturesApi.ExchangeData.GetFundingRatesAsync(symbol, start, end, 1000, cancel);
+            if (!dataResponse.GetResultOrError(out var data, out var error))
+            {
+                m_logger.LogError(error.Message);
+                throw new InvalidOperationException(error.Message);
+            }
+            
+            var fundingRates = data.Select(x => x.ToFundingRate()).ToArray();
+            return fundingRates;
+        }
     }
 }

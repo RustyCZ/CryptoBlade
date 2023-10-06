@@ -84,5 +84,8 @@ namespace CryptoBlade.Exchanges
         Task<Order[]> GetOrdersAsync(CancellationToken cancel = default);
 
         Task<Position[]> GetPositionsAsync(CancellationToken cancel = default);
+
+        Task<FundingRate[]> GetFundingRatesAsync(string symbol, DateTime start, DateTime end,
+            CancellationToken cancel = default);
     }
 }

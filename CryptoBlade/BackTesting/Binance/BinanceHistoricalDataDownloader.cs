@@ -76,30 +76,85 @@ namespace CryptoBlade.BackTesting.Binance
                             try
                             {
                                 List<Candle> candles = new List<Candle>();
-                                var downloadedCandles = await DownloadDataSourceAsync(httpClient, dataSource.OneMinute, cancel);
+                                FundingRate[] fundingRates = Array.Empty<FundingRate>();
+                                var downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                    httpClient, 
+                                    dataSource.OneMinute.Source, 
+                                    candle => ToCandle(dataSource.OneMinute.TimeFrame, candle), 
+                                    HasKlinesHeaderAsync,
+                                    cancel);
                                 if (downloadedCandles.Any())
                                 {
                                     candles.AddRange(downloadedCandles);
-                                    downloadedCandles = await DownloadDataSourceAsync(httpClient, dataSource.FiveMinutes, cancel);
+                                    downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                        httpClient,
+                                        dataSource.FiveMinutes.Source,
+                                        candle => ToCandle(dataSource.FiveMinutes.TimeFrame, candle),
+                                        HasKlinesHeaderAsync,
+                                        cancel);
                                     candles.AddRange(downloadedCandles);
-                                    downloadedCandles =
-                                        await DownloadDataSourceAsync(httpClient, dataSource.FifteenMinutes, cancel);
+                                    downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                        httpClient,
+                                        dataSource.FifteenMinutes.Source,
+                                        candle => ToCandle(dataSource.FifteenMinutes.TimeFrame, candle),
+                                        HasKlinesHeaderAsync,
+                                        cancel);
                                     candles.AddRange(downloadedCandles);
-                                    downloadedCandles = await DownloadDataSourceAsync(httpClient, dataSource.ThirtyMinutes, cancel);
+                                    downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                        httpClient,
+                                        dataSource.ThirtyMinutes.Source,
+                                        candle => ToCandle(dataSource.ThirtyMinutes.TimeFrame, candle),
+                                        HasKlinesHeaderAsync,
+                                        cancel);
                                     candles.AddRange(downloadedCandles);
-                                    downloadedCandles = await DownloadDataSourceAsync(httpClient, dataSource.OneHour, cancel);
+                                    downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                        httpClient,
+                                        dataSource.OneHour.Source,
+                                        candle => ToCandle(dataSource.OneHour.TimeFrame, candle),
+                                        HasKlinesHeaderAsync,
+                                        cancel);
                                     candles.AddRange(downloadedCandles);
-                                    downloadedCandles = await DownloadDataSourceAsync(httpClient, dataSource.FourHours, cancel);
+                                    downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                        httpClient,
+                                        dataSource.FourHours.Source,
+                                        candle => ToCandle(dataSource.FourHours.TimeFrame, candle),
+                                        HasKlinesHeaderAsync,
+                                        cancel);
                                     candles.AddRange(downloadedCandles);
-                                    downloadedCandles = await DownloadDataSourceAsync(httpClient, dataSource.OneDay, cancel);
+                                    downloadedCandles = await DownloadDataAsync<Candle, BinanceCandle>(
+                                        httpClient,
+                                        dataSource.OneDay.Source,
+                                        candle => ToCandle(dataSource.OneDay.TimeFrame, candle),
+                                        HasKlinesHeaderAsync,
+                                        cancel);
                                     candles.AddRange(downloadedCandles);
+
+                                    if (dataSource.FundingRateUrl != null)
+                                    {
+                                        fundingRates = await DownloadDataAsync<FundingRate, BinanceFundingRate>(
+                                            httpClient,
+                                            dataSource.FundingRateUrl,
+                                            ToFundingRate,
+                                            HasFundingRateHeaderAsync,
+                                            cancel);
+                                        fundingRates = fundingRates
+                                            .DistinctBy(x => x.Time)
+                                            .OrderBy(x => x.Time).ToArray();
+                                    }
+                                    else
+                                    {
+                                        DateTime min = candles.Min(x => x.StartTime);
+                                        DateTime max = candles.Max(x => x.StartTime);
+                                        fundingRates = (await m_cbFuturesRestClient.GetFundingRatesAsync(symbol, min, max, cancel))
+                                            .OrderBy(x => x.Time).ToArray();
+                                    }
                                 }
 
                                 candles = candles.OrderBy(c => c.StartTime).ToList();
-                                var dayCandles = SplitToDayCandles(candles);
+                                var dayCandles = SplitToDailyData(candles, fundingRates);
 
                                 using var l = await asyncLock.LockAsync();
-                                foreach (DayCandles dayCandleData in dayCandles)
+                                foreach (DailyData dayCandleData in dayCandles)
                                 {
                                     if (startTime > dayCandleData.Date)
                                         startTime = dayCandleData.Date;
@@ -110,12 +165,19 @@ namespace CryptoBlade.BackTesting.Binance
                                         m_logger.LogWarning($"Inconsistent data for {symbol} {dayCandleData.Date:yyyy-MM-dd} {dayCandles.Length} candles");
                                         continue;
                                     }
+
+                                    if (!dayCandleData.FundingRates.Any())
+                                    {
+                                        m_logger.LogWarning($"No funding rates for {symbol} {dayCandleData.Date:yyyy-MM-dd}");
+                                    }
+
                                     m_logger.LogInformation($"Downloaded {symbol} {dayCandleData.Date:yyyy-MM-dd}");
                                     HistoricalDayData historicalDayData = new HistoricalDayData
                                     {
                                         Candles = dayCandleData.Candles,
                                         Day = dayCandleData.Date,
                                         Trades = Array.Empty<Trade>(),
+                                        FundingRates = dayCandleData.FundingRates,
                                     };
                                     await m_historicalDataStorage.StoreAsync(symbol, historicalDayData, true, cancel);
                                     missingDaysSet.Remove(dayCandleData.Date);
@@ -148,6 +210,7 @@ namespace CryptoBlade.BackTesting.Binance
                             Candles = Array.Empty<Candle>(),
                             Day = missingDay,
                             Trades = Array.Empty<Trade>(),
+                            FundingRates = Array.Empty<FundingRate>(),
                         };
                         await m_historicalDataStorage.StoreAsync(symbol, historicalDayData, true, cancel);
                     }
@@ -163,19 +226,22 @@ namespace CryptoBlade.BackTesting.Binance
             return hasInconsistentData;
         }
 
-        private DayCandles[] SplitToDayCandles(IReadOnlyList<Candle> candles)
+        private DailyData[] SplitToDailyData(IReadOnlyList<Candle> candles, IReadOnlyList<FundingRate> fundingRates)
         {
             if(!candles.Any())
-                return Array.Empty<DayCandles>();
+                return Array.Empty<DailyData>();
 
-            var dayCandles = new List<DayCandles>();
+            var dayCandles = new List<DailyData>();
             var currentDay = candles[0].StartTime.Date;
             var currentDayCandles = new List<Candle>();
+            var fundingRatesMap = ToFundingRatesMap(fundingRates);
             foreach (var candle in candles)
             {
                 if (candle.StartTime.Date != currentDay)
                 {
-                    dayCandles.Add(new DayCandles(currentDay, currentDayCandles.ToArray()));
+                    if (!fundingRatesMap.TryGetValue(currentDay, out FundingRate[]? dailyFundingRates))
+                        dailyFundingRates = Array.Empty<FundingRate>();
+                    dayCandles.Add(new DailyData(currentDay, currentDayCandles.ToArray(), dailyFundingRates));
                     currentDay = candle.StartTime.Date;
                     currentDayCandles.Clear();
                 }
@@ -183,64 +249,115 @@ namespace CryptoBlade.BackTesting.Binance
                 currentDayCandles.Add(candle);
             }
 
-            dayCandles.Add(new DayCandles(currentDay, currentDayCandles.ToArray()));
+            if (!fundingRatesMap.TryGetValue(currentDay, out FundingRate[]? currentDayFundingRates))
+                currentDayFundingRates = Array.Empty<FundingRate>();
+            dayCandles.Add(new DailyData(currentDay, currentDayCandles.ToArray(), currentDayFundingRates));
             
             return dayCandles.ToArray();
         }
 
-        private async Task<Candle[]> DownloadDataSourceAsync(HttpClient client, TimeFrameSource dataSource, CancellationToken cancel)
+        private Dictionary<DateTime, FundingRate[]> ToFundingRatesMap(IReadOnlyList<FundingRate> fundingRates)
         {
-            m_logger.LogInformation($"Downloading {dataSource.Source}");
-            var response = await client.GetAsync(dataSource.Source, cancel);
+            var fundingRatesMap = new Dictionary<DateTime, FundingRate[]>();
+            var currentDay = fundingRates[0].Time.Date;
+            var currentDayFundingRates = new List<FundingRate>();
+            foreach (var fundingRate in fundingRates)
+            {
+                if (fundingRate.Time.Date != currentDay)
+                {
+                    fundingRatesMap[currentDay] = currentDayFundingRates.OrderBy(x => x.Time).ToArray();
+                    currentDay = fundingRate.Time.Date;
+                    currentDayFundingRates.Clear();
+                }
+
+                currentDayFundingRates.Add(fundingRate);
+            }
+
+            fundingRatesMap.Add(currentDay, currentDayFundingRates.OrderBy(x => x.Time).ToArray());
+            
+            return fundingRatesMap;
+        }
+
+        private static Candle ToCandle(TimeFrame timeFrame, BinanceCandle record)
+        {
+            return new Candle
+            {
+                Close = record.Close,
+                High = record.High,
+                Low = record.Low,
+                Open = record.Open,
+                StartTime = record.Timestamp,
+                Volume = record.Volume,
+                TimeFrame = timeFrame,
+            };
+        }
+
+        private static FundingRate ToFundingRate(BinanceFundingRate record)
+        {
+            return new FundingRate
+            {
+                Rate = (decimal)record.LastFundingRate,
+                Time = record.CalcTimestamp,
+            };
+        }
+
+        private async Task<TResult[]> DownloadDataAsync<TResult, TSource>(HttpClient client, 
+            string dataSource, 
+            Func<TSource, TResult> converter,
+            Func<ZipArchiveEntry, CancellationToken, Task<bool>> hasHeader,
+            CancellationToken cancel) 
+            where TSource : class 
+            where TResult : class
+        {
+            m_logger.LogInformation($"Downloading {dataSource}");
+            var response = await client.GetAsync(dataSource, cancel);
             if (response.StatusCode == HttpStatusCode.NotFound)
             {
-                m_logger.LogInformation($"No data for {dataSource.Source}");
-                return Array.Empty<Candle>();
+                m_logger.LogInformation($"No data for {dataSource}");
+                return Array.Empty<TResult>();
             }
             if (!response.IsSuccessStatusCode)
                 throw new InvalidOperationException($"Failed to download {dataSource} status code {response.StatusCode}");
             byte[] data = await response.Content.ReadAsByteArrayAsync(cancel);
             using var ms = new MemoryStream(data);
             ZipArchive zip = new ZipArchive(ms, ZipArchiveMode.Read, true);
-            List<Candle> candles = new List<Candle>();
+            List<TResult> resultData = new List<TResult>();
             if (zip.Entries.Count > 1)
                 throw new InvalidOperationException("Invalid data");
             foreach (var zipArchiveEntry in zip.Entries)
             {
-                bool hasCsvHeader = await HasCsvHeaderAsync(zipArchiveEntry, cancel);
+                bool hasCsvHeader = await hasHeader(zipArchiveEntry, cancel);
                 await using var entryStream = zipArchiveEntry.Open();
                 using var reader = new StreamReader(entryStream);
-                using var csv = new CsvReader(reader, 
-                    new CsvConfiguration(CultureInfo.InvariantCulture) 
+                using var csv = new CsvReader(reader,
+                    new CsvConfiguration(CultureInfo.InvariantCulture)
                     {
                         HasHeaderRecord = hasCsvHeader,
                     });
-                var records = csv.GetRecords<BinanceCandle>();
+                var records = csv.GetRecords<TSource>();
                 foreach (var record in records)
-                {
-                    candles.Add(new Candle
-                    {
-                        Close = record.Close,
-                        High = record.High,
-                        Low = record.Low,
-                        Open = record.Open,
-                        StartTime = record.Timestamp,
-                        Volume = record.Volume,
-                        TimeFrame = dataSource.TimeFrame,
-                    });
-                }
+                    resultData.Add(converter(record));
             }
-            m_logger.LogInformation($"Downloaded {candles.Count} candles from {dataSource.Source}");
+            m_logger.LogInformation($"Downloaded {resultData.Count} entries from {dataSource}");
 
-            return candles.ToArray();
+            return resultData.ToArray();
         }
 
-        private async Task<bool> HasCsvHeaderAsync(ZipArchiveEntry entry, CancellationToken cancel)
+        private async Task<bool> HasKlinesHeaderAsync(ZipArchiveEntry entry, CancellationToken cancel)
         {
             await using var entryStream = entry.Open();
             using var headerReader = new StreamReader(entryStream);
             var firstLine = await headerReader.ReadLineAsync(cancel);
             bool hasHeader = firstLine != null && firstLine.StartsWith("open_time");
+            return hasHeader;
+        }
+
+        private async Task<bool> HasFundingRateHeaderAsync(ZipArchiveEntry entry, CancellationToken cancel)
+        {
+            await using var entryStream = entry.Open();
+            using var headerReader = new StreamReader(entryStream);
+            var firstLine = await headerReader.ReadLineAsync(cancel);
+            bool hasHeader = firstLine != null && firstLine.StartsWith("calc_time");
             return hasHeader;
         }
 
@@ -252,13 +369,14 @@ namespace CryptoBlade.BackTesting.Binance
             {
                 DataSources dataSources = new DataSources
                 {
-                    OneMinute = GetDataUrl(symbol, missingDay, TimeFrame.OneMinute, preferDaily),
-                    FiveMinutes = GetDataUrl(symbol, missingDay, TimeFrame.FiveMinutes, preferDaily),
-                    FifteenMinutes = GetDataUrl(symbol, missingDay, TimeFrame.FifteenMinutes, preferDaily),
-                    ThirtyMinutes = GetDataUrl(symbol, missingDay, TimeFrame.ThirtyMinutes, preferDaily),
-                    OneHour = GetDataUrl(symbol, missingDay, TimeFrame.OneHour, preferDaily),
-                    FourHours = GetDataUrl(symbol, missingDay, TimeFrame.FourHours, preferDaily),
-                    OneDay = GetDataUrl(symbol, missingDay, TimeFrame.OneDay, preferDaily),
+                    OneMinute = GetKlinesDataUrl(symbol, missingDay, TimeFrame.OneMinute, preferDaily),
+                    FiveMinutes = GetKlinesDataUrl(symbol, missingDay, TimeFrame.FiveMinutes, preferDaily),
+                    FifteenMinutes = GetKlinesDataUrl(symbol, missingDay, TimeFrame.FifteenMinutes, preferDaily),
+                    ThirtyMinutes = GetKlinesDataUrl(symbol, missingDay, TimeFrame.ThirtyMinutes, preferDaily),
+                    OneHour = GetKlinesDataUrl(symbol, missingDay, TimeFrame.OneHour, preferDaily),
+                    FourHours = GetKlinesDataUrl(symbol, missingDay, TimeFrame.FourHours, preferDaily),
+                    OneDay = GetKlinesDataUrl(symbol, missingDay, TimeFrame.OneDay, preferDaily),
+                    FundingRateUrl = GetFundingRateUrlAsync(symbol, missingDay),
                 };
                 processedDataSources.Add(dataSources);
             }
@@ -266,7 +384,7 @@ namespace CryptoBlade.BackTesting.Binance
             return processedDataSources.ToList();
         }
 
-        private TimeFrameSource GetDataUrl(string symbol, DateTime day, TimeFrame timeFrame, bool preferDaily)
+        private TimeFrameSource GetKlinesDataUrl(string symbol, DateTime day, TimeFrame timeFrame, bool preferDaily)
         {
             var utcNow = DateTime.UtcNow;
             bool isCurrentMonth = day.Year == utcNow.Year && day.Month == utcNow.Month;
@@ -292,6 +410,16 @@ namespace CryptoBlade.BackTesting.Binance
                     $"https://data.binance.vision/data/futures/um/monthly/klines/{symbol}/{timeFrameStr}/{symbol}-{timeFrameStr}-{day:yyyy}-{day:MM}.zip");
         }
 
+        private string? GetFundingRateUrlAsync(string symbol, DateTime day)
+        {
+            var utcNow = DateTime.UtcNow;
+            bool isCurrentMonth = day.Year == utcNow.Year && day.Month == utcNow.Month;
+            if (isCurrentMonth)
+                return null;
+
+            return $"https://data.binance.vision/data/futures/um/monthly/fundingRate/{symbol}/{symbol}-fundingRate-{day:yyyy}-{day:MM}.zip";
+        }
+
         private readonly record struct DataSources(
             TimeFrameSource OneMinute,
             TimeFrameSource FiveMinutes,
@@ -299,10 +427,11 @@ namespace CryptoBlade.BackTesting.Binance
             TimeFrameSource ThirtyMinutes,
             TimeFrameSource OneHour,
             TimeFrameSource FourHours,
-            TimeFrameSource OneDay);
+            TimeFrameSource OneDay,
+            string? FundingRateUrl);
 
         private readonly record struct TimeFrameSource(TimeFrame TimeFrame, string Source);
 
-        private record DayCandles(DateTime Date, Candle[] Candles);
+        private record DailyData(DateTime Date, Candle[] Candles, FundingRate[] FundingRates);
     }
 }

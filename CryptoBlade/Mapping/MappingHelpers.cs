@@ -73,6 +73,15 @@ namespace CryptoBlade.Mapping
             };
         }
 
+        public static FundingRate ToFundingRate(this Bybit.Net.Objects.Models.V5.BybitFundingHistory fundingHistory)
+        {
+            return new FundingRate
+            {
+                Rate = fundingHistory.FundingRate,
+                Time = fundingHistory.Timestamp,
+            };
+        }
+
         public static Candle ToCandle(this Bybit.Net.Objects.Models.V5.BybitKlineUpdate klineUpdate)
         {
             return new Candle

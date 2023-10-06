@@ -474,6 +474,11 @@ namespace CryptoBlade.BackTesting
             return positions;
         }
 
+        public Task<FundingRate[]> GetFundingRatesAsync(string symbol, DateTime start, DateTime end, CancellationToken cancel = default)
+        {
+            throw new NotSupportedException("Not needed for the client. Funding rates are sent in ticker data");
+        }
+
         public Task<IUpdateSubscription> SubscribeToWalletUpdatesAsync(Action<Balance> handler, CancellationToken cancel = default)
         {
             var subscription = new BalanceUpdateSubscription(this, handler);

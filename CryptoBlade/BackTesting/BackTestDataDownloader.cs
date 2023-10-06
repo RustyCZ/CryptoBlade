@@ -1,6 +1,4 @@
-﻿using Microsoft.Extensions.Options;
-
-namespace CryptoBlade.BackTesting
+﻿namespace CryptoBlade.BackTesting
 {
     public class BackTestDataDownloader : IBackTestDataDownloader
     {
@@ -17,7 +15,7 @@ namespace CryptoBlade.BackTesting
             {
                 if(cancel.IsCancellationRequested)
                     break;
-                await m_historicalDataDownloader.DownloadRangeAsync(symbol, new HistoricalDataInclude(false, true), start, end, cancel);
+                await m_historicalDataDownloader.DownloadRangeAsync(symbol, new HistoricalDataInclude(false, true, true), start, end, cancel);
             }
         }
     }

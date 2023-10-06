@@ -79,6 +79,13 @@ namespace CryptoBlade.BackTesting.Bybit
                                         candles.AddRange(klines2);
                                     }
                                 }
+
+                                FundingRate[] fundingRates = Array.Empty<FundingRate>();
+                                if (dataInclude.IncludeFundingRates)
+                                {
+                                    fundingRates = await m_cbFuturesRestClient.GetFundingRatesAsync(symbol, day, day.AddDays(1).AddMinutes(-1), cancel);
+                                    fundingRates = fundingRates.OrderBy(x => x.Time).ToArray();
+                                }
                                 
                                 using var l = await asyncLock.LockAsync();
                                 missingDaysSet.Remove(day);
@@ -89,6 +96,7 @@ namespace CryptoBlade.BackTesting.Bybit
                                     Candles = candlesArr,
                                     Day = day,
                                     Trades = trades,
+                                    FundingRates = fundingRates,
                                 };
                                 await m_historicalDataStorage.StoreAsync(symbol, historicalDayData, flush, cancel);
                                 m_logger.LogInformation($"Downloaded {symbol} {day:yyyy-MM-dd}");

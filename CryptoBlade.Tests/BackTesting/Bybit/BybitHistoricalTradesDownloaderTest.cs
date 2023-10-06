@@ -50,7 +50,7 @@ namespace CryptoBlade.Tests.BackTesting.Bybit
             var start = new DateTime(2023, 8, 1);
             var end = new DateTime(2023, 8, 12);
             const string symbol = "SOLUSDT";
-            await downloader.DownloadRangeAsync(symbol, new HistoricalDataInclude(false, true), start, end);
+            await downloader.DownloadRangeAsync(symbol, new HistoricalDataInclude(false, true, true), start, end);
             var missingDays = await storage.FindMissingDaysAsync(symbol, start, end);
             Assert.Empty(missingDays);
             var dayData = await storage.ReadAsync(symbol, start);

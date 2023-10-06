@@ -5,10 +5,7 @@ using CryptoBlade.Helpers;
 using CryptoBlade.Mapping;
 using CryptoBlade.Models;
 using CryptoBlade.Strategies.Policies;
-using CryptoBlade.Strategies.Wallet;
-using CryptoExchange.Net.CommonObjects;
 using Microsoft.Extensions.Options;
-using System.Collections.Generic;
 using Order = CryptoBlade.Models.Order;
 using OrderSide = Bybit.Net.Enums.OrderSide;
 using OrderStatus = Bybit.Net.Enums.V5.OrderStatus;
@@ -86,8 +83,8 @@ namespace CryptoBlade.Exchanges
             return modeOk;
         }
 
-        public async Task<bool> SwitchCrossIsolatedMarginAsync(SymbolInfo symbol, 
-            TradeMode tradeMode, 
+        public async Task<bool> SwitchCrossIsolatedMarginAsync(SymbolInfo symbol,
+            TradeMode tradeMode,
             CancellationToken cancel = default)
         {
             if (!symbol.MaxLeverage.HasValue)
@@ -257,7 +254,8 @@ namespace CryptoBlade.Exchanges
             return false;
         }
 
-        public async Task<bool> PlaceMarketBuyOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        public async Task<bool> PlaceMarketBuyOrderAsync(string symbol, decimal quantity, decimal price,
+            CancellationToken cancel = default)
         {
             var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
                 .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
@@ -276,7 +274,8 @@ namespace CryptoBlade.Exchanges
             return true;
         }
 
-        public async Task<bool> PlaceMarketSellOrderAsync(string symbol, decimal quantity, decimal price, CancellationToken cancel = default)
+        public async Task<bool> PlaceMarketSellOrderAsync(string symbol, decimal quantity, decimal price,
+            CancellationToken cancel = default)
         {
             var sellOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits
                 .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
@@ -319,7 +318,7 @@ namespace CryptoBlade.Exchanges
                 m_logger.LogWarning($"{symbol} Failed to place long take profit order: {error}");
                 return false;
             }
-                
+
             var orderStatusRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrder>
                 .RetryTooManyVisitsBybitResponse
                 .ExecuteAsync(async () => await m_bybitRestClient.V5Api.Trading.GetOrdersAsync(
@@ -344,18 +343,20 @@ namespace CryptoBlade.Exchanges
         public async Task<bool> PlaceShortTakeProfitOrderAsync(string symbol, decimal qty, decimal price, bool force,
             CancellationToken cancel = default)
         {
-            var buyOrderRes = await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits.ExecuteAsync(async () =>
-                await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
-                    category: m_category,
-                    symbol: symbol,
-                    side: OrderSide.Buy,
-                    type: force ? NewOrderType.Market : NewOrderType.Limit,
-                    quantity: qty,
-                    price: price,
-                    positionIdx: PositionIdx.SellHedgeMode,
-                    reduceOnly: true,
-                    timeInForce: force ? TimeInForce.GoodTillCanceled : TimeInForce.PostOnly,
-                    ct: cancel));
+            var buyOrderRes =
+                await ExchangePolicies<Bybit.Net.Objects.Models.V5.BybitOrderId>.RetryTooManyVisits.ExecuteAsync(
+                    async () =>
+                        await m_bybitRestClient.V5Api.Trading.PlaceOrderAsync(
+                            category: m_category,
+                            symbol: symbol,
+                            side: OrderSide.Buy,
+                            type: force ? NewOrderType.Market : NewOrderType.Limit,
+                            quantity: qty,
+                            price: price,
+                            positionIdx: PositionIdx.SellHedgeMode,
+                            reduceOnly: true,
+                            timeInForce: force ? TimeInForce.GoodTillCanceled : TimeInForce.PostOnly,
+                            ct: cancel));
             if (!buyOrderRes.GetResultOrError(out var buyOrder, out var error))
             {
                 m_logger.LogWarning($"{symbol} Failed to place short take profit order: {error}");
@@ -388,7 +389,8 @@ namespace CryptoBlade.Exchanges
             var balance = await ExchangePolicies.RetryForever
                 .ExecuteAsync(async () =>
                 {
-                    var balanceResult = await m_bybitRestClient.V5Api.Account.GetBalancesAsync(AccountType.Contract, null,
+                    var balanceResult = await m_bybitRestClient.V5Api.Account.GetBalancesAsync(AccountType.Contract,
+                        null,
                         cancel);
                     if (balanceResult.GetResultOrError(out var data, out var error))
                         return data;
@@ -398,7 +400,8 @@ namespace CryptoBlade.Exchanges
             {
                 if (b.AccountType == AccountType.Contract)
                 {
-                    var asset = b.Assets.FirstOrDefault(x => string.Equals(x.Asset, Assets.QuoteAsset, StringComparison.OrdinalIgnoreCase));
+                    var asset = b.Assets.FirstOrDefault(x =>
+                        string.Equals(x.Asset, Assets.QuoteAsset, StringComparison.OrdinalIgnoreCase));
                     if (asset != null)
                     {
                         var contract = asset.ToBalance();
@@ -443,9 +446,9 @@ namespace CryptoBlade.Exchanges
         }
 
         public async Task<Candle[]> GetKlinesAsync(
-            string symbol, 
+            string symbol,
             TimeFrame interval,
-            int limit, 
+            int limit,
             CancellationToken cancel = default)
         {
             var candles = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
@@ -499,15 +502,15 @@ namespace CryptoBlade.Exchanges
             return candles;
         }
 
-        public async Task<Models.Ticker> GetTickerAsync(string symbol, CancellationToken cancel = default)
+        public async Task<Ticker> GetTickerAsync(string symbol, CancellationToken cancel = default)
         {
             var priceData = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
             {
                 var priceDataRes = await m_bybitRestClient.V5Api.ExchangeData.GetLinearInverseTickersAsync(
                     m_category,
-                    symbol, 
+                    symbol,
                     null,
-                    null, 
+                    null,
                     cancel);
                 if (priceDataRes.GetResultOrError(out var data, out var error))
                 {
@@ -582,6 +585,26 @@ namespace CryptoBlade.Exchanges
             });
 
             return positions;
+        }
+
+        public async Task<FundingRate[]> GetFundingRatesAsync(string symbol, DateTime start, DateTime end,
+            CancellationToken cancel = default)
+        {
+            var rates = await ExchangePolicies.RetryForever.ExecuteAsync(async () =>
+            {
+                var fundingRates = await m_bybitRestClient.V5Api.ExchangeData.GetFundingRateHistoryAsync(
+                    m_category,
+                    symbol,
+                    start,
+                    end,
+                    200,
+                    cancel);
+                if (!fundingRates.GetResultOrError(out var data, out var error))
+                    throw new InvalidOperationException(error.Message);
+                return data.List.Select(x => x.ToFundingRate()).ToArray();
+            });
+
+            return rates;
         }
     }
 }

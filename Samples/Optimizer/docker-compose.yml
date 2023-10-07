@@ -74,7 +74,7 @@ services:
         - CB_TradingBot__Optimizer__TradingBot__WalletExposureLong__Min=0.2
         - CB_TradingBot__Optimizer__TradingBot__WalletExposureLong__Max=0.5
         - CB_TradingBot__Optimizer__TradingBot__WalletExposureLong__FractionDigits=1
-        - CB_TradingBot__Optimizer__TradingBot__WalletExposureShort__Min=0.2
+        - CB_TradingBot__Optimizer__TradingBot__WalletExposureShort__Min=0.0
         - CB_TradingBot__Optimizer__TradingBot__WalletExposureShort__Max=0.5
         - CB_TradingBot__Optimizer__TradingBot__WalletExposureShort__FractionDigits=1
         - CB_TradingBot__Optimizer__TradingBot__QtyFactorLong__Min=0.001
@@ -122,7 +122,7 @@ services:
         - CB_TradingBot__Optimizer__TradingBot__TargetLongExposure__Min=2
         - CB_TradingBot__Optimizer__TradingBot__TargetLongExposure__Max=6
         - CB_TradingBot__Optimizer__TradingBot__TargetLongExposure__FractionDigits=1
-        - CB_TradingBot__Optimizer__TradingBot__TargetShortExposure__Min=2
+        - CB_TradingBot__Optimizer__TradingBot__TargetShortExposure__Min=0
         - CB_TradingBot__Optimizer__TradingBot__TargetShortExposure__Max=6
         - CB_TradingBot__Optimizer__TradingBot__TargetShortExposure__FractionDigits=1
         - CB_TradingBot__Optimizer__TradingBot__MaxLongStrategies__Min=6

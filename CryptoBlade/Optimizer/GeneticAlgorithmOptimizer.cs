@@ -7,6 +7,7 @@ using CryptoBlade.Helpers;
 using CryptoBlade.Optimizer.Fitness;
 using CryptoBlade.Optimizer.Strategies;
 using CryptoBlade.Optimizer.Strategies.AutoHedge;
+using CryptoBlade.Optimizer.Strategies.MfiRsiTrend;
 using CryptoBlade.Optimizer.Strategies.Tartaglia;
 using CryptoBlade.Strategies;
 using GeneticSharp;
@@ -111,6 +112,17 @@ namespace CryptoBlade.Optimizer
                             options.MinReentryPositionDistanceShort = m_options.Value.Optimizer.AutoHedge.MinReentryPositionDistanceShort;
                         });
                     chromosome = new AutoHedgeChromosome(autoHedgeOptions);
+                    break;
+                case StrategyNames.MfiRsiEriTrend:
+                    var mfiRsiTrendOptions = CreateChromosomeOptions<MfiRsiTrendChromosomeOptions>(m_options.Value,
+                        options =>
+                        {
+                            options.MinReentryPositionDistanceLong = m_options.Value.Optimizer.MfiRsiEriTrend.MinReentryPositionDistanceLong;
+                            options.MinReentryPositionDistanceShort = m_options.Value.Optimizer.MfiRsiEriTrend.MinReentryPositionDistanceShort;
+                            options.MfiRsiLookbackPeriod = m_options.Value.Optimizer.MfiRsiEriTrend.MfiRsiLookbackPeriod;
+                            options.UseEriOnly = m_options.Value.Optimizer.MfiRsiEriTrend.UseEriOnly;
+                        });
+                    chromosome = new MfiRsiTrendChromosome(mfiRsiTrendOptions);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException("Invalid strategy name");

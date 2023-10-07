@@ -1,4 +1,5 @@
 ﻿using CryptoBlade.Configuration;
+using CryptoBlade.Strategies;
 using GeneticSharp;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +24,7 @@ namespace CryptoBlade.Optimizer.Strategies.AutoHedge
             var complexGenes = ToComplexGeneValues();
             ApplyTradingBotGenes(options, complexGenes, 0);
             int basicGeneLength = GetGeneLength<TradingBotGene>();
-            options.StrategyName = "AutoHedge";
+            options.StrategyName = StrategyNames.AutoHedge;
             options.Strategies.AutoHedge.MinReentryPositionDistanceLong = Convert.ToDecimal(complexGenes[(int)AutoHedgeGene.MinReentryPositionDistanceLong + basicGeneLength].FloatValue);
             options.Strategies.AutoHedge.MinReentryPositionDistanceShort = Convert.ToDecimal(complexGenes[(int)AutoHedgeGene.MinReentryPositionDistanceShort + basicGeneLength].FloatValue);
         }

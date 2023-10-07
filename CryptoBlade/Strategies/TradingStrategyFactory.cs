@@ -73,6 +73,10 @@ namespace CryptoBlade.Strategies
                 {
                     strategyOptions.MinimumPriceDistance = config.MinimumPriceDistance;
                     strategyOptions.MinimumVolume = config.MinimumVolume;
+                    strategyOptions.MinReentryPositionDistanceLong = config.Strategies.MfiRsiEriTrend.MinReentryPositionDistanceLong;
+                    strategyOptions.MinReentryPositionDistanceShort = config.Strategies.MfiRsiEriTrend.MinReentryPositionDistanceShort;
+                    strategyOptions.MfiRsiLookbackPeriod = config.Strategies.MfiRsiEriTrend.MfiRsiLookbackPeriod;
+                    strategyOptions.UseEriOnly = config.Strategies.MfiRsiEriTrend.UseEriOnly;
                 });
             return new MfiRsiEriTrendTradingStrategy(options, symbol, m_walletManager, m_restClient);
         }

@@ -14,27 +14,35 @@ namespace CryptoBlade.Strategies
         public decimal MinimumVolume { get; set; }
 
         public decimal MinimumPriceDistance { get; set; }
+
+        public decimal MinReentryPositionDistanceLong { get; set; }
+
+        public decimal MinReentryPositionDistanceShort { get; set; }
+
+        public int MfiRsiLookbackPeriod { get; set; } = 100;
+
+        public bool UseEriOnly { get; set; }
     }
 
     public class MfiRsiEriTrendTradingStrategy : TradingStrategyBase
     {
         private readonly IOptions<MfiRsiEriTrendTradingStrategyOptions> m_options;
-        private const int c_candlePeriod = 200;
-        private const int c_untradableFirstDays = 30;
 
         public MfiRsiEriTrendTradingStrategy(IOptions<MfiRsiEriTrendTradingStrategyOptions> options, 
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient) 
-            : base(options, symbol, GetRequiredTimeFrames(), walletManager, restClient)
+            : base(options, symbol, GetRequiredTimeFrames(options.Value.MfiRsiLookbackPeriod), walletManager, restClient)
         {
             m_options = options;
         }
 
-        private static TimeFrameWindow[] GetRequiredTimeFrames()
+        private static TimeFrameWindow[] GetRequiredTimeFrames(int mfiLookbackPeriod)
         {
+            const int minLength = 15;
+            int requiredLength = mfiLookbackPeriod + minLength;
             return new[]
             {
-                new TimeFrameWindow(TimeFrame.OneMinute, c_candlePeriod, true),
-                new TimeFrameWindow(TimeFrame.FiveMinutes, c_candlePeriod, false),
+                new TimeFrameWindow(TimeFrame.OneMinute, requiredLength, true),
+                new TimeFrameWindow(TimeFrame.FiveMinutes, minLength, false),
             };
         }
 
@@ -77,7 +85,7 @@ namespace CryptoBlade.Strategies
                 var sma = quotes.GetSma(14);
                 var lastSma = sma.LastOrDefault();
                 var spread5Min = TradeSignalHelpers.Get5MinSpread(quotes);
-                var mfiTrend = TradeSignalHelpers.GetMfiTrend(quotes);
+                var mfiTrend = TradeSignalHelpers.GetMfiTrend(quotes, m_options.Value.MfiRsiLookbackPeriod);
                 var volume = TradeSignalHelpers.VolumeInQuoteCurrency(lastQuote);
                 var eriTrend = TradeSignalHelpers.GetModifiedEriTrend(quotes);
                 var movingAverageTrendPct = TradeSignalHelpers.GetTrendPercent(lastSma, lastQuote);
@@ -99,6 +107,8 @@ namespace CryptoBlade.Strategies
                 bool hasMinVolume = volume >= m_options.Value.MinimumVolume;
                 bool shouldAddToShort = false;
                 bool shouldAddToLong = false;
+                bool hasMinShortPriceDistance = false;
+                bool hasMinLongPriceDistance = false;
                 bool canBeTraded = (lastQuote.Date - SymbolInfo.LaunchTime).TotalDays > m_options.Value.InitialUntradableDays;
                 if (ticker != null 
                     && ma6HighLast != null && ma6HighLast.Sma.HasValue
@@ -115,17 +125,39 @@ namespace CryptoBlade.Strategies
                 Position? longPosition = LongPosition;
                 Position? shortPosition = ShortPosition;
 
+                if (ticker != null && longPosition != null)
+                {
+                    var rebuyPrice = longPosition.AveragePrice * (1.0m - m_options.Value.MinReentryPositionDistanceLong);
+                    if (ticker.BestBidPrice < rebuyPrice)
+                        hasMinLongPriceDistance = hasBuySignal;
+                }
+
+                if (ticker != null && shortPosition != null)
+                {
+                    var resellPrice = shortPosition.AveragePrice * (1.0m + m_options.Value.MinReentryPositionDistanceShort);
+                    if (ticker.BestAskPrice > resellPrice)
+                        hasMinShortPriceDistance = hasSellSignal;
+                }
+
+                Trend trend = Trend.Neutral;
+                if(m_options.Value.UseEriOnly) 
+                    trend = eriTrend;
+                else if (eriTrend == Trend.Long || movingAverageTrend == Trend.Long)
+                    trend = Trend.Long;
+                else if (eriTrend == Trend.Short || movingAverageTrend == Trend.Short)
+                    trend = Trend.Short;
+
                 hasBuySignal = hasMinVolume
                                && hasAllRequiredMa
                                && mfiTrend == Trend.Long
-                               && (eriTrend == Trend.Long || movingAverageTrend == Trend.Long)
+                               && trend == Trend.Long
                                && hasMinSpread
                                && canBeTraded;
 
                 hasSellSignal = hasMinVolume
                                 && hasAllRequiredMa
                                 && mfiTrend == Trend.Short
-                                && (eriTrend == Trend.Short || movingAverageTrend == Trend.Short)
+                                && trend == Trend.Short
                                 && hasMinSpread
                                 && canBeTraded;
 
@@ -133,22 +165,24 @@ namespace CryptoBlade.Strategies
                                     && shouldAddToLong
                                     && hasAllRequiredMa
                                     && mfiTrend == Trend.Long
-                                    && (eriTrend == Trend.Long || movingAverageTrend == Trend.Long)
+                                    && trend == Trend.Long
                                     && hasMinSpread
                                     && longPosition != null
                                     && ticker != null
                                     && ticker.BestBidPrice < longPosition.AveragePrice
+                                    && hasMinLongPriceDistance
                                     && canBeTraded;
 
                 hasSellExtraSignal = hasMinVolume
                                      && shouldAddToShort
                                      && hasAllRequiredMa
                                      && mfiTrend == Trend.Short
-                                     && (eriTrend == Trend.Short || movingAverageTrend == Trend.Short)
+                                     && trend == Trend.Short
                                      && hasMinSpread
                                      && shortPosition != null
                                      && ticker != null
                                      && ticker.BestAskPrice > shortPosition.AveragePrice
+                                     && hasMinShortPriceDistance
                                      && canBeTraded;
 
                 indicators.Add(new StrategyIndicator(nameof(IndicatorType.Volume1Min), volume));

@@ -14,7 +14,6 @@ namespace CryptoBlade.Strategies
     {
         private readonly IOptions<MfiRsiCandlePreciseTradingStrategyOptions> m_options;
         private const int c_candlePeriod = 50;
-        private const int c_untradableFirstDays = 30;
 
         public MfiRsiCandlePreciseTradingStrategy(IOptions<MfiRsiCandlePreciseTradingStrategyOptions> options,
             string symbol, IWalletManager walletManager, ICbFuturesRestClient restClient)

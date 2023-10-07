@@ -1,4 +1,5 @@
 ﻿using CryptoBlade.Configuration;
+using CryptoBlade.Strategies;
 using GeneticSharp;
 using Microsoft.Extensions.Options;
 
@@ -23,7 +24,7 @@ namespace CryptoBlade.Optimizer.Strategies.Tartaglia
             var complexGenes = ToComplexGeneValues();
             ApplyTradingBotGenes(options, complexGenes, 0);
             int basicGeneLength = GetGeneLength<TradingBotGene>();
-            options.StrategyName = "Tartaglia";
+            options.StrategyName = StrategyNames.Tartaglia;
             options.Strategies.Tartaglia.ChannelLengthLong = complexGenes[(int)TartagliaGene.ChannelLengthLong + basicGeneLength].IntValue;
             options.Strategies.Tartaglia.ChannelLengthShort = complexGenes[(int)TartagliaGene.ChannelLengthShort + basicGeneLength].IntValue;
             options.Strategies.Tartaglia.StandardDeviationLong = complexGenes[(int)TartagliaGene.StandardDeviationLong + basicGeneLength].FloatValue;

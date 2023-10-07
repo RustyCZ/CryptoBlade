@@ -2,11 +2,12 @@
 
 namespace CryptoBlade.BackTesting
 {
-    public class CandleBacktestProcessor
+    public class BackTestDataProcessor
     {
         private readonly Dictionary<TimeFrame, Queue<Candle>> m_candles;
-        private static readonly TimeFrame[] s_dailyTimeFrames = new[]
-        {
+        private readonly Queue<FundingRate> m_fundingRates;
+        private FundingRate? m_lastFundingRate;
+        private static readonly TimeFrame[] s_dailyTimeFrames = {
             TimeFrame.OneMinute,
             TimeFrame.FiveMinutes,
             TimeFrame.FifteenMinutes,
@@ -16,7 +17,7 @@ namespace CryptoBlade.BackTesting
             TimeFrame.OneDay,
         };
 
-        public CandleBacktestProcessor(HistoricalDayData dayData)
+        public BackTestDataProcessor(HistoricalDayData dayData)
         {
             m_candles = new Dictionary<TimeFrame, Queue<Candle>>();
             var candlesPerTimeFrame = dayData.Candles.GroupBy(x => x.TimeFrame);
@@ -25,9 +26,11 @@ namespace CryptoBlade.BackTesting
                 var orderedCandles = candles.OrderBy(x => x.StartTime);
                 m_candles.Add(candles.Key, new Queue<Candle>(orderedCandles));
             }
+            var fundingRates = dayData.FundingRates.OrderBy(x => x.Time);
+            m_fundingRates = new Queue<FundingRate>(fundingRates);
         }
 
-        public Candle[] AdvanceTime(DateTime currentTime)
+        public TimeData AdvanceTime(DateTime currentTime)
         {
             List<Candle> candles = new List<Candle>();
             foreach (var timeFrame in s_dailyTimeFrames)
@@ -39,7 +42,14 @@ namespace CryptoBlade.BackTesting
                 if(currentCandle != null)
                     candles.Add(currentCandle);
             }
-            return candles.ToArray();
+            
+            FundingRate? fundingRate = null;
+            if (m_fundingRates.TryPeek(out var nextFundingRate) && nextFundingRate.Time == currentTime)
+                fundingRate = m_fundingRates.Dequeue();
+            var lastFundingRate = fundingRate ?? m_lastFundingRate;
+            if(fundingRate != null)
+                m_lastFundingRate = fundingRate;
+            return new TimeData(currentTime, candles.ToArray(), fundingRate, lastFundingRate);
         }
 
         private static void DequeueOldCandles(Queue<Candle> queue, DateTime currentTime)

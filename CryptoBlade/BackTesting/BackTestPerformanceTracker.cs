@@ -15,10 +15,10 @@ namespace CryptoBlade.BackTesting
     {
         private readonly record struct BalanceInTime(Balance Balance, decimal TotalBalance, DateTime Time);
         private readonly record struct ScatterPlotPoint(double X, double Y);
-
         private readonly IOptions<BackTestPerformanceTrackerOptions> m_options;
         private readonly BackTestExchange m_backTestExchange;
         private IUpdateSubscription? m_nextStepSubscription;
+        private IUpdateSubscription? m_fundingRateSubscription;
         private decimal m_lowestEquityToBalance;
         private decimal m_maxDrawDown;
         private decimal m_localTopBalance;
@@ -32,7 +32,8 @@ namespace CryptoBlade.BackTesting
         private BalanceInTime m_lastBalance;
         private decimal m_initialSpot;
         private bool m_resultsSaved;
-
+        private readonly Dictionary<string, decimal> m_fundingRateProfitOrLoss;
+        
         public BackTestPerformanceTracker(IOptions<BackTestPerformanceTrackerOptions> options,
             IOptions<TradingBotOptions> tradingBotOptions,
             BackTestExchange backTestExchange, 
@@ -48,6 +49,7 @@ namespace CryptoBlade.BackTesting
             m_tradingBotOptions = tradingBotOptions;
             m_testId = backTestIdProvider.GetTestId();
             Result = new BacktestPerformanceResult();
+            m_fundingRateProfitOrLoss = new Dictionary<string, decimal>();
         }
 
         public BacktestPerformanceResult Result { get; private set; }
@@ -76,6 +78,18 @@ namespace CryptoBlade.BackTesting
             m_lastBalance = new BalanceInTime(balance, totalBalance, time);
             m_balanceHistory.Add(m_lastBalance);
             m_nextStepSubscription = await m_backTestExchange.SubscribeToNextStepAsync(OnNextStep, cancellationToken);
+            m_fundingRateSubscription = await m_backTestExchange.SubscribeToFundingRateFeeUpdatesAsync(OnFundingRate, cancellationToken);
+        }
+
+        private void OnFundingRate(string symbol, decimal fee)
+        {
+            using (m_lock.Lock())
+            {
+                if (!m_fundingRateProfitOrLoss.TryGetValue(symbol, out var profitOrLoss))
+                    profitOrLoss = 0;
+                profitOrLoss += fee;
+                m_fundingRateProfitOrLoss[symbol] = profitOrLoss;
+            }
         }
 
         private async void OnNextStep(DateTime obj)
@@ -168,6 +182,12 @@ namespace CryptoBlade.BackTesting
                 m_nextStepSubscription = null;
             }
 
+            if (m_fundingRateSubscription != null)
+            {
+                await m_fundingRateSubscription.CloseAsync();
+                m_fundingRateSubscription = null;
+            }
+
             var balance = await m_backTestExchange.GetBalancesAsync(cancellationToken);
             OnWalletUpdate(balance);
             using (await m_lock.LockAsync(cancellationToken))
@@ -226,9 +246,18 @@ namespace CryptoBlade.BackTesting
             decimal initialBalance = m_balanceHistory.First().Balance.WalletBalance!.Value + m_initialSpot;
             decimal finalBalance = m_balanceHistory.Last().Balance.WalletBalance!.Value + m_backTestExchange.SpotBalance;
             decimal finalEquity = m_balanceHistory.Last().Balance.Equity!.Value;
+            decimal totalFundingRateProfitOrLoss = 0;
+            foreach (var fundingRateProfitOrLoss in m_fundingRateProfitOrLoss)
+                totalFundingRateProfitOrLoss += fundingRateProfitOrLoss.Value;
+            var fundingRateProfitOrLosses = m_fundingRateProfitOrLoss
+                .Select(x => new FundingRateProfitOrLoss
+                {
+                    ProfitOrLoss = x.Value,
+                    Symbol = x.Key,
+                })
+                .ToArray();
             int numberOfDays = (int)Math.Round((m_balanceHistory.Last().Time - m_balanceHistory.First().Time).TotalDays);
             decimal dailyGainPercent = CalculateAverageDailyGain();
-
             var totalProfit = m_totalProfit;
             if (m_totalProfit == 0)
                 totalProfit = 1;
@@ -251,6 +280,8 @@ namespace CryptoBlade.BackTesting
                 SpotBalance = m_backTestExchange.SpotBalance,
                 EquityBalanceNormalizedRooMeanSquareError = nrmseBalance,
                 AdgNormalizedRootMeanSquareError = nrmseAdg,
+                TotalFundingRateProfitOrLoss = totalFundingRateProfitOrLoss,
+                FundingRateProfitOrLosses = fundingRateProfitOrLosses
             };
             Result = result;
             var directory = Path.Combine(m_options.Value.BackTestsDirectory, m_testId);

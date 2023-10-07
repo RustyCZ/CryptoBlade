@@ -16,6 +16,8 @@
         public decimal SpotBalance { get; set; }
         public double EquityBalanceNormalizedRooMeanSquareError { get; set; }
         public double AdgNormalizedRootMeanSquareError { get; set; }
+        public decimal TotalFundingRateProfitOrLoss { get; set; }
         public OpenPositionWithOrders[] OpenPositionWithOrders { get; set; } = Array.Empty<OpenPositionWithOrders>();
+        public FundingRateProfitOrLoss[] FundingRateProfitOrLosses { get; set; } = Array.Empty<FundingRateProfitOrLoss>();
     }
 }

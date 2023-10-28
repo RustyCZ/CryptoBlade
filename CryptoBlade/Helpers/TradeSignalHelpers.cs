@@ -1,6 +1,7 @@
 ﻿using CryptoBlade.Models;
 using CryptoBlade.Strategies.Common;
 using Microsoft.VisualBasic;
+using ScottPlot;
 using Skender.Stock.Indicators;
 
 namespace CryptoBlade.Helpers
@@ -117,6 +118,79 @@ namespace CryptoBlade.Helpers
             }
 
             return Trend.Neutral;
+        }
+
+        public static double?[] CalculateQflBuyBases(Quote[] quotes, int volumeSmaLength = 6)
+        {
+            if (quotes.Length < volumeSmaLength + 3)
+                return Array.Empty<double?>();
+
+            var smaLength = quotes.Use(CandlePart.Volume).GetSma(volumeSmaLength).ToArray();
+            bool[] downArr = new bool[quotes.Length];
+            for (int i = 0; i < quotes.Length; i++)
+            {
+                bool down = i >= 5 &&
+                            quotes[i - 3].Low < quotes[i - 4].Low
+                            && quotes[i - 4].Low < quotes[i - 5].Low
+                            && quotes[i - 2].Low > quotes[i - 3].Low
+                            && quotes[i - 1].Low > quotes[i - 2].Low
+                            && smaLength[i - 3].Sma.HasValue
+                            && (double)quotes[i - 3].Volume > smaLength[i - 3].Sma!.Value;
+                downArr[i] = down;
+            }
+
+            double?[] fractalDown = new double?[quotes.Length];
+
+            for (int i = 0; i < quotes.Length; i++)
+            {
+                if (downArr[i] && i > 2)
+                {
+                    fractalDown[i] = (double)quotes[i - 3].Low;
+                }
+                else if (i > 0)
+                {
+                    fractalDown[i] = fractalDown[i - 1];
+                }
+            }
+
+            return fractalDown;
+        }
+
+        public static double?[] CalculateQflSellBases(Quote[] quotes, int volumeSmaLength = 6)
+        {
+            if (quotes.Length < volumeSmaLength + 3)
+                return Array.Empty<double?>();
+
+            var smaLength = quotes.Use(CandlePart.Volume).GetSma(volumeSmaLength).ToArray();
+            bool[] upArr = new bool[quotes.Length];
+            for (int i = 0; i < quotes.Length; i++)
+            {
+                bool up = i >= 5 &&
+                            quotes[i - 3].High > quotes[i - 4].High
+                            && quotes[i - 4].High > quotes[i - 5].High
+                            && quotes[i - 2].High < quotes[i - 3].High
+                            && quotes[i - 1].High < quotes[i - 2].High
+                            && smaLength[i - 3].Sma.HasValue
+                            && (double)quotes[i - 3].Volume > smaLength[i - 3].Sma!.Value;
+
+                upArr[i] = up;
+            }
+
+            double?[] fractalUp = new double?[quotes.Length];
+
+            for (int i = 0; i < quotes.Length; i++)
+            {
+                if (upArr[i] && i > 2)
+                {
+                    fractalUp[i] = (double)quotes[i - 3].High;
+                }
+                else if (i > 0)
+                {
+                    fractalUp[i] = fractalUp[i - 1];
+                }
+            }
+
+            return fractalUp;
         }
     }
 }

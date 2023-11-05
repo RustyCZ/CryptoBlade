@@ -141,9 +141,19 @@ namespace CryptoBlade.Helpers
             return (double)quote.High > priceLevel && (double)quote.Low < priceLevel;
         }
 
+        public static bool CrossesBellow(double previousValue, double currentValue, double value)
+        {
+            return previousValue > value && currentValue <= value;
+        }
+
         public static bool CrossesAbove(this Quote quote, double priceLevel)
         {
             return (double)quote.Low < priceLevel && (double)quote.High > priceLevel;
+        }
+
+        public static bool CrossesAbove(double previousValue, double currentValue, double value)
+        {
+            return previousValue < value && currentValue >= value;
         }
 
         public static LinearChannelPrice CalculateExpectedPrice(Quote[] quotes, int channelLength)

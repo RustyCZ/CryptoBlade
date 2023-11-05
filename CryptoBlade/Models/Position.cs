@@ -12,6 +12,10 @@
 
         public TradeMode TradeMode { get; set; }
 
+        public DateTime CreateTime { get; set; }
+
+        public DateTime UpdateTime { get; set; }
+
         public Position Clone()
         {
             return new Position
@@ -20,7 +24,9 @@
                 Side = Side,
                 Quantity = Quantity,
                 AveragePrice = AveragePrice,
-                TradeMode = TradeMode
+                TradeMode = TradeMode,
+                CreateTime = CreateTime,
+                UpdateTime = UpdateTime
             };
         }
     }

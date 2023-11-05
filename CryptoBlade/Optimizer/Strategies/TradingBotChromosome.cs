@@ -3,7 +3,7 @@ using Microsoft.Extensions.Options;
 
 namespace CryptoBlade.Optimizer.Strategies
 {
-    public abstract class TradingBotChromosome : ComplexChromosome
+    public abstract class TradingBotChromosome : ComplexChromosome, ITradingBotChromosome
     {
         protected TradingBotChromosome(ComplexGene[] complexGenes) 
             : base(complexGenes)

@@ -8,5 +8,6 @@
         public const string LinearRegression = "LinearRegression";
         public const string Tartaglia = "Tartaglia";
         public const string Mona = "Mona";
+        public const string Qiqi = "Qiqi";
     }
 }

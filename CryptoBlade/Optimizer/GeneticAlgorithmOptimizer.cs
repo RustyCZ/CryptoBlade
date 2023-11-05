@@ -8,6 +8,7 @@ using CryptoBlade.Optimizer.Fitness;
 using CryptoBlade.Optimizer.Strategies;
 using CryptoBlade.Optimizer.Strategies.AutoHedge;
 using CryptoBlade.Optimizer.Strategies.MfiRsiTrend;
+using CryptoBlade.Optimizer.Strategies.Qiqi;
 using CryptoBlade.Optimizer.Strategies.Tartaglia;
 using CryptoBlade.Strategies;
 using GeneticSharp;
@@ -124,6 +125,15 @@ namespace CryptoBlade.Optimizer
                         });
                     chromosome = new MfiRsiTrendChromosome(mfiRsiTrendOptions);
                     break;
+                case StrategyNames.Qiqi:
+                    var qiqiOptions = CreateRecursiveGridChromosomeOptions<QiqiChromosomeOptions>(m_options.Value,
+                        options =>
+                        {
+                            options.QflBellowPercentEnterLong = m_options.Value.Optimizer.Qiqi.QflBellowPercentEnterLong;
+                            options.RsiTakeProfitLong = m_options.Value.Optimizer.Qiqi.RsiTakeProfitLong;
+                        });
+                    chromosome = new QiqiChromosome(qiqiOptions);
+                    break;
                 default:
                     throw new ArgumentOutOfRangeException("Invalid strategy name");
             }
@@ -170,7 +180,7 @@ namespace CryptoBlade.Optimizer
                     m_logger.LogInformation($"Mutation probability reset to {ga.MutationProbability}");
                 }
                 var bestChromosome = ga.Population.BestChromosome;
-                TradingBotChromosome tradingBotChromosome = (TradingBotChromosome)bestChromosome;
+                ITradingBotChromosome tradingBotChromosome = (ITradingBotChromosome)bestChromosome;
                 var clonedOptions = Options.Create(m_options.Value.Clone());
                 tradingBotChromosome.ApplyGenesToTradingBotOptions(clonedOptions.Value);
                 int generationDecimalNumbers = (int)Math.Log10(geneticAlgorithmOptions.GenerationCount) + 1;
@@ -287,6 +297,44 @@ namespace CryptoBlade.Optimizer
                 CriticalModelWalletExposureThresholdShort =
                     config.Optimizer.TradingBot.CriticalModelWalletExposureThresholdShort,
                 SpotRebalancingRatio = config.Optimizer.TradingBot.SpotRebalancingRatio,
+            };
+            optionsSetup(options);
+            return Options.Create(options);
+        }
+
+        private IOptions<TOptions> CreateRecursiveGridChromosomeOptions<TOptions>(TradingBotOptions config,
+            Action<TOptions> optionsSetup)
+            where TOptions : RecursiveGridTradingBotChromosomeOptions, new()
+        {
+            var options = new TOptions
+            {
+                WalletExposureLong = config.Optimizer.TradingBot.WalletExposureLong,
+                WalletExposureShort = config.Optimizer.TradingBot.WalletExposureShort,
+                UnstuckingEnabled = config.Optimizer.TradingBot.UnstuckingEnabled,
+                SlowUnstuckThresholdPercent = config.Optimizer.TradingBot.SlowUnstuckThresholdPercent,
+                SlowUnstuckPositionThresholdPercent = config.Optimizer.TradingBot.SlowUnstuckPositionThresholdPercent,
+                SlowUnstuckPercentStep = config.Optimizer.TradingBot.SlowUnstuckPercentStep,
+                ForceUnstuckThresholdPercent = config.Optimizer.TradingBot.ForceUnstuckThresholdPercent,
+                ForceUnstuckPositionThresholdPercent = config.Optimizer.TradingBot.ForceUnstuckPositionThresholdPercent,
+                ForceUnstuckPercentStep = config.Optimizer.TradingBot.ForceUnstuckPercentStep,
+                ForceKillTheWorst = config.Optimizer.TradingBot.ForceKillTheWorst,
+                MinimumVolume = config.Optimizer.TradingBot.MinimumVolume,
+                TargetLongExposure = config.Optimizer.TradingBot.TargetLongExposure,
+                TargetShortExposure = config.Optimizer.TradingBot.TargetShortExposure,
+                MaxLongStrategies = config.Optimizer.TradingBot.MaxLongStrategies,
+                MaxShortStrategies = config.Optimizer.TradingBot.MaxShortStrategies,
+                EnableCriticalModeLong = config.Optimizer.TradingBot.EnableCriticalModeLong,
+                EnableCriticalModeShort = config.Optimizer.TradingBot.EnableCriticalModeShort,
+                CriticalModelWalletExposureThresholdLong =
+                    config.Optimizer.TradingBot.CriticalModelWalletExposureThresholdLong,
+                CriticalModelWalletExposureThresholdShort =
+                    config.Optimizer.TradingBot.CriticalModelWalletExposureThresholdShort,
+                SpotRebalancingRatio = config.Optimizer.TradingBot.SpotRebalancingRatio,
+                DDownFactorLong = config.Optimizer.RecursiveStrategy.DDownFactorLong,
+                InitialQtyPctLong = config.Optimizer.RecursiveStrategy.InitialQtyPctLong,
+                ReentryPositionPriceDistanceLong = config.Optimizer.RecursiveStrategy.ReentryPositionPriceDistanceLong,
+                ReentryPositionPriceDistanceWalletExposureWeightingLong =
+                    config.Optimizer.RecursiveStrategy.ReentryPositionPriceDistanceWalletExposureWeightingLong,
             };
             optionsSetup(options);
             return Options.Create(options);

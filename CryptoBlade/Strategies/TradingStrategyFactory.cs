@@ -39,6 +39,9 @@ namespace CryptoBlade.Strategies
             if (string.Equals(StrategyNames.Mona, strategyName, StringComparison.OrdinalIgnoreCase))
                 return CreateMonaStrategy(config, symbol);
 
+            if (string.Equals(StrategyNames.Qiqi, strategyName, StringComparison.OrdinalIgnoreCase))
+                return CreateQiqiStrategy(config, symbol);
+
             return CreateAutoHedgeStrategy(config, symbol);
         }
 
@@ -125,6 +128,45 @@ namespace CryptoBlade.Strategies
                     strategyOptions.MfiRsiLookback = config.Strategies.Mona.MfiRsiLookback;
                 });
             return new MonaStrategy(options, symbol, m_walletManager, m_restClient);
+        }
+
+        private ITradingStrategy CreateQiqiStrategy(TradingBotOptions config, string symbol)
+        {
+            var options = CreateRecursiveTradeOptions<QiqiStrategyOptions>(config, symbol,
+                strategyOptions =>
+                {
+                    strategyOptions.QflBellowPercentEnterLong = config.Strategies.Qiqi.QflBellowPercentEnterLong;
+                    strategyOptions.RsiTakeProfitLong = config.Strategies.Qiqi.RsiTakeProfitLong;
+                    strategyOptions.MaxTimeStuck = config.Strategies.Qiqi.MaxTimeStuck;
+                });
+            return new QiqiStrategy(options, symbol, m_walletManager, m_restClient);
+        }
+
+        private IOptions<TOptions> CreateRecursiveTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup)
+            where TOptions : RecursiveStrategyBaseOptions, new()
+        {
+            bool isBackTest = config.IsBackTest();
+            int initialUntradableDays = isBackTest ? config.BackTest.InitialUntradableDays : 0;
+            var options = new TOptions
+            {
+                WalletExposureLong = config.WalletExposureLong,
+                WalletExposureShort = config.WalletExposureShort,
+                TradingMode = GetTradingMode(config, symbol),
+                MaxAbsFundingRate = config.MaxAbsFundingRate,
+                FeeRate = config.MakerFeeRate,
+                ForceUnstuckPercentStep = config.Unstucking.ForceUnstuckPercentStep,
+                SlowUnstuckPercentStep = config.Unstucking.SlowUnstuckPercentStep,
+                InitialUntradableDays = initialUntradableDays,
+                IgnoreInconsistency = isBackTest,
+                NormalizedAverageTrueRangePeriod = config.NormalizedAverageTrueRangePeriod,
+                StrategySelectPreference = config.StrategySelectPreference,
+                DDownFactorLong = config.Strategies.Recursive.DDownFactorLong,
+                InitialQtyPctLong = config.Strategies.Recursive.InitialQtyPctLong,
+                ReentryPositionPriceDistanceLong = config.Strategies.Recursive.ReentryPositionPriceDistanceLong,
+                ReentryPositionPriceDistanceWalletExposureWeightingLong = config.Strategies.Recursive.ReentryPositionPriceDistanceWalletExposureWeightingLong,
+            };
+            optionsSetup(options);
+            return Options.Create(options);
         }
 
         private IOptions<TOptions> CreateTradeOptions<TOptions>(TradingBotOptions config, string symbol, Action<TOptions> optionsSetup) 

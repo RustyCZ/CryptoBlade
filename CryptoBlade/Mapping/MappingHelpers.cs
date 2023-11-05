@@ -270,14 +270,21 @@ namespace CryptoBlade.Mapping
         {
             if (!value.AveragePrice.HasValue)
                 return null;
-            return new Position
+            var position = new Position
             {
                 AveragePrice = value.AveragePrice.Value,
                 Quantity = value.Quantity,
                 Side = value.Side.ToPositionSide(),
                 Symbol = value.Symbol,
                 TradeMode = value.TradeMode.ToTradeMode(),
+                CreateTime = value.CreateTime,
+                UpdateTime = value.UpdateTime
             };
+
+            if (position.UpdateTime < position.CreateTime)
+                position.UpdateTime = position.CreateTime;
+
+            return position;
         }
 
         public static PositionSide ToPositionSide(this Bybit.Net.Enums.PositionSide value)

@@ -1,0 +1,68 @@
+version: '3.4'
+
+services:
+  cryptoblade:
+    image: cryptoblade:latest
+    labels:
+        - "autoheal=true"
+    ports:
+        - 8090:80
+    volumes:
+        - ./BackTests:/app/BackTests
+        - ./HistoricalData:/app/HistoricalData
+    environment:
+        - CB_TradingBot__Accounts__0__ApiKey=
+        - CB_TradingBot__Accounts__0__ApiSecret=
+        - CB_TradingBot__BotMode=Live
+        - CB_TradingBot__StrategyName=Qiqi
+        - CB_TradingBot__WalletExposureLong=1.0
+        - CB_TradingBot__WalletExposureShort=0.0
+        - CB_TradingBot__TradingMode=DynamicBackTest
+        - CB_TradingBot__MinimumVolume=5492
+        - CB_TradingBot__StrategySelectPreference=Volume
+        - CB_TradingBot__DynamicBotCount__TargetLongExposure=3.6
+        - CB_TradingBot__DynamicBotCount__TargetShortExposure=0
+        - CB_TradingBot__DynamicBotCount__MaxLongStrategies=10
+        - CB_TradingBot__DynamicBotCount__MaxShortStrategies=0
+        - CB_TradingBot__DynamicBotCount__MaxDynamicStrategyOpenPerStep=10
+        - CB_TradingBot__DynamicBotCount__Step=0.00:01:00
+        - CB_TradingBot__Unstucking__Enabled=true
+        - CB_TradingBot__Unstucking__SlowUnstuckThresholdPercent=-0.17
+        - CB_TradingBot__Unstucking__SlowUnstuckPositionThresholdPercent=-0.13
+        - CB_TradingBot__Unstucking__SlowUnstuckPercentStep=1
+        - CB_TradingBot__Unstucking__ForceUnstuckThresholdPercent=-0.37
+        - CB_TradingBot__Unstucking__ForceUnstuckPositionThresholdPercent=1
+        - CB_TradingBot__Unstucking__ForceUnstuckPercentStep=1
+        - CB_TradingBot__Unstucking__ForceKillTheWorst=true
+        - CB_TradingBot__BackTest__InitialBalance=10000
+        - CB_TradingBot__BackTest__Start=2021-01-01
+        - CB_TradingBot__BackTest__End=2023-11-01
+        - CB_TradingBot__BackTest__ResultFileName=result.json
+        - CB_TradingBot__BackTest__ResultDetailedFileName=result_detailed.json
+        - CB_TradingBot__BackTest__DataSource=Binance
+        - CB_TradingBot__BackTest__InitialUntradableDays=-2000
+        - CB_TradingBot__Strategies__Recursive__DDownFactorLong=1.7480000257492065
+        - CB_TradingBot__Strategies__Recursive__InitialQtyPctLong=0.04899999871850014
+        - CB_TradingBot__Strategies__Recursive__ReentryPositionPriceDistanceLong=0.019999999552965164
+        - CB_TradingBot__Strategies__Recursive__ReentryPositionPriceDistanceWalletExposureWeightingLong=0.5070000290870667
+        - CB_TradingBot__Strategies__Qiqi__RsiTakeProfitLong=60
+        - CB_TradingBot__Strategies__Qiqi__QflBellowPercentEnterLong=0.10000000149011612
+        - CB_TradingBot__Whitelist__0=INJUSDT
+        - CB_TradingBot__Whitelist__1=SOLUSDT
+        - CB_TradingBot__Whitelist__2=DOGEUSDT
+        - CB_TradingBot__Whitelist__3=XRPUSDT
+        - CB_TradingBot__Whitelist__4=RNDRUSDT
+        - CB_TradingBot__Whitelist__5=STXUSDT
+        - CB_TradingBot__Whitelist__6=RUNEUSDT
+        - CB_TradingBot__Whitelist__7=MKRUSDT
+        - CB_TradingBot__Whitelist__8=LDOUSDT
+        - CB_TradingBot__Whitelist__9=GRTUSDT
+        - CB_TradingBot__Whitelist__10=IMXUSDT
+        - CB_TradingBot__Whitelist__11=LINKUSDT
+        - CB_TradingBot__Whitelist__12=TRXUSDT
+        - CB_TradingBot__Whitelist__13=SNXUSDT
+        - CB_TradingBot__Whitelist__14=HBARUSDT
+        - CB_TradingBot__Whitelist__15=ADAUSDT
+        - CB_TradingBot__Whitelist__16=MANAUSDT
+        - CB_TradingBot__Whitelist__17=FILUSDT
+        - CB_TradingBot__Whitelist__18=VETUSDT

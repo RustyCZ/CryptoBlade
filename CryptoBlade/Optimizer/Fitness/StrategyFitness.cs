@@ -30,7 +30,7 @@ namespace CryptoBlade.Optimizer.Fitness
         {
             OptimizerBacktestExecutor backtestExecutor = new OptimizerBacktestExecutor(m_historicalDataStorage);
             var clonedOptions = Options.Create(m_initialOptions.Value.Clone());
-            TradingBotChromosome tradingBotChromosome = (TradingBotChromosome)chromosome;
+            ITradingBotChromosome tradingBotChromosome = (ITradingBotChromosome)chromosome;
             tradingBotChromosome.ApplyGenesToTradingBotOptions(clonedOptions.Value);
             BacktestPerformanceResult? backtestResult =
                 TryToLoadExistingResult(clonedOptions.Value)

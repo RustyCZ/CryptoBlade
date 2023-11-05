@@ -7,6 +7,8 @@
         public AutoHedgeOptimizerOptions AutoHedge { get; set; } = new AutoHedgeOptimizerOptions();
         public MfiRsiEriTrendOptimizerOptions MfiRsiEriTrend { get; set; } = new MfiRsiEriTrendOptimizerOptions();
         public TradingBotOptimizerOptions TradingBot { get; set; } = new TradingBotOptimizerOptions();
+        public RecursiveStrategyOptimizerOptions RecursiveStrategy { get; set; } = new RecursiveStrategyOptimizerOptions();
+        public QiqiOptimizerOptions Qiqi { get; set; } = new QiqiOptimizerOptions();
         public string SessionId { get; set; } = "Session01";
         public bool EnableHistoricalDataCaching { get; set; } = true;
         public int ParallelTasks { get; set; } = 10;

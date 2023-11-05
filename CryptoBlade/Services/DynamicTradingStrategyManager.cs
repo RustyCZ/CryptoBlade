@@ -204,9 +204,9 @@ namespace CryptoBlade.Services
                                 .ToArray();
 
                             bool criticalLong = m_options.Value.CriticalMode.EnableCriticalModeLong 
-                                                && strategyState.TotalLongExposure > m_options.Value.CriticalMode.WalletExposureThresholdLong;
+                                                && strategyState.TotalWalletLongExposure > m_options.Value.CriticalMode.WalletExposureThresholdLong;
                             bool criticalShort = m_options.Value.CriticalMode.EnableCriticalModeShort 
-                                                 && strategyState.TotalShortExposure > m_options.Value.CriticalMode.WalletExposureThresholdShort;
+                                                 && strategyState.TotalWalletShortExposure > m_options.Value.CriticalMode.WalletExposureThresholdShort;
 
                             // by default already trading strategies can only maintain existing positions
                             Dictionary<string, ExecuteParams> executeParams =

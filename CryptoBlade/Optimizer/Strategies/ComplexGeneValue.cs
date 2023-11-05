@@ -43,6 +43,8 @@ namespace CryptoBlade.Optimizer.Strategies
                     int intValue = (int)(value);
                     if (minValue < 0)
                         intValue -= Math.Abs(minValue);
+                    else if (minValue > 0)
+                        intValue += minValue;
                     if (intValue < minValue)
                         intValue = minValue;
                     if (intValue > maxValue)
@@ -58,6 +60,8 @@ namespace CryptoBlade.Optimizer.Strategies
                     float floatValue = (float)(value);
                     if (minFloatValue < 0)
                         floatValue -= Math.Abs(minFloatValue);
+                    else if (minFloatValue > 0)
+                        floatValue += minFloatValue;
                     if (floatValue < minFloatValue)
                         floatValue = minFloatValue;
                     if (floatValue > maxFloatValue)

@@ -46,6 +46,10 @@ namespace CryptoBlade.BackTesting
         private static Position CalculatePosition(Order order, Position? existingPosition, Order firstOrder)
         {
             Position position;
+            var createTime = existingPosition?.CreateTime ?? firstOrder.CreateTime;
+            var updateTime = order.CreateTime;
+            if (updateTime < createTime)
+                createTime = updateTime;
             if (order.ReduceOnly!.Value)
             {
                 position = new Position
@@ -55,6 +59,8 @@ namespace CryptoBlade.BackTesting
                     TradeMode = TradeMode.CrossMargin,
                     Quantity = existingPosition!.Quantity - order.Quantity,
                     AveragePrice = existingPosition.AveragePrice,
+                    CreateTime = createTime,
+                    UpdateTime = updateTime,
                 };
             }
             else
@@ -71,6 +77,8 @@ namespace CryptoBlade.BackTesting
                     TradeMode = TradeMode.CrossMargin,
                     Quantity = totalQuantity,
                     AveragePrice = averagePrice,
+                    CreateTime = createTime,
+                    UpdateTime = updateTime,
                 };
             }
 

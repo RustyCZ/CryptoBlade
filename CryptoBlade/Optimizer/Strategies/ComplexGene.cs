@@ -34,6 +34,11 @@
                             maxIntValue += Math.Abs(minIntValue);
                             minIntValue = 0;
                         }
+                        if (minIntValue > 0)
+                        {
+                            maxIntValue -= minIntValue;
+                            minIntValue = 0;
+                        }
                         int totalBits = (int)Math.Ceiling(Math.Log(maxIntValue + 1, 2));
                         if (totalBits == 0)
                             totalBits = 1;
@@ -46,6 +51,11 @@
                         if (minFloatValue < 0)
                         {
                             maxFloatValue += Math.Abs(minFloatValue);
+                            minFloatValue = 0;
+                        }
+                        if (minFloatValue > 0)
+                        {
+                            maxFloatValue -= minFloatValue;
                             minFloatValue = 0;
                         }
                         var maxLongValue = Convert.ToInt64(maxFloatValue * Math.Pow(10, FractionDigits));

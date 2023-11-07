@@ -17,7 +17,7 @@ services:
         - CB_TradingBot__StrategyName=Qiqi
         - CB_TradingBot__WalletExposureLong=1.0
         - CB_TradingBot__WalletExposureShort=0.0
-        - CB_TradingBot__TradingMode=DynamicBackTest
+        - CB_TradingBot__TradingMode=Dynamic
         - CB_TradingBot__MinimumVolume=5492
         - CB_TradingBot__StrategySelectPreference=Volume
         - CB_TradingBot__DynamicBotCount__TargetLongExposure=3.6

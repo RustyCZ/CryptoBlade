@@ -131,6 +131,10 @@ namespace CryptoBlade.Optimizer
                         {
                             options.QflBellowPercentEnterLong = m_options.Value.Optimizer.Qiqi.QflBellowPercentEnterLong;
                             options.RsiTakeProfitLong = m_options.Value.Optimizer.Qiqi.RsiTakeProfitLong;
+                            options.QflAbovePercentEnterShort = m_options.Value.Optimizer.Qiqi.QflAbovePercentEnterShort;
+                            options.RsiTakeProfitShort = m_options.Value.Optimizer.Qiqi.RsiTakeProfitShort;
+                            options.TakeProfitPercentLong = m_options.Value.Optimizer.Qiqi.TakeProfitPercentLong;
+                            options.TakeProfitPercentShort = m_options.Value.Optimizer.Qiqi.TakeProfitPercentShort;
                         });
                     chromosome = new QiqiChromosome(qiqiOptions);
                     break;
@@ -335,6 +339,11 @@ namespace CryptoBlade.Optimizer
                 ReentryPositionPriceDistanceLong = config.Optimizer.RecursiveStrategy.ReentryPositionPriceDistanceLong,
                 ReentryPositionPriceDistanceWalletExposureWeightingLong =
                     config.Optimizer.RecursiveStrategy.ReentryPositionPriceDistanceWalletExposureWeightingLong,
+                DDownFactorShort = config.Optimizer.RecursiveStrategy.DDownFactorShort,
+                InitialQtyPctShort = config.Optimizer.RecursiveStrategy.InitialQtyPctShort,
+                ReentryPositionPriceDistanceShort = config.Optimizer.RecursiveStrategy.ReentryPositionPriceDistanceShort,
+                ReentryPositionPriceDistanceWalletExposureWeightingShort =
+                    config.Optimizer.RecursiveStrategy.ReentryPositionPriceDistanceWalletExposureWeightingShort,
             };
             optionsSetup(options);
             return Options.Create(options);

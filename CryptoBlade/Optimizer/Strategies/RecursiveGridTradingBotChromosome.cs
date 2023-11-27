@@ -38,6 +38,10 @@ namespace CryptoBlade.Optimizer.Strategies
             options.Strategies.Recursive.InitialQtyPctLong = genes[(int)RecursiveGridTradingBotGene.InitialQtyPctLong + offset].FloatValue;
             options.Strategies.Recursive.ReentryPositionPriceDistanceLong = genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceLong + offset].FloatValue;
             options.Strategies.Recursive.ReentryPositionPriceDistanceWalletExposureWeightingLong = genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceWalletExposureWeightingLong + offset].FloatValue;
+            options.Strategies.Recursive.DDownFactorShort = genes[(int)RecursiveGridTradingBotGene.DDownFactorShort + offset].FloatValue;
+            options.Strategies.Recursive.InitialQtyPctShort = genes[(int)RecursiveGridTradingBotGene.InitialQtyPctShort + offset].FloatValue;
+            options.Strategies.Recursive.ReentryPositionPriceDistanceShort = genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceShort + offset].FloatValue;
+            options.Strategies.Recursive.ReentryPositionPriceDistanceWalletExposureWeightingShort = genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceWalletExposureWeightingShort + offset].FloatValue;
         }
 
         protected static void AddTradingBotGenesFromOptions(IOptions<RecursiveGridTradingBotChromosomeOptions> options, ComplexGene[] genes, int offset)
@@ -66,6 +70,10 @@ namespace CryptoBlade.Optimizer.Strategies
             genes[(int)RecursiveGridTradingBotGene.InitialQtyPctLong + offset] = options.Value.InitialQtyPctLong.ToComplexGene();
             genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceLong + offset] = options.Value.ReentryPositionPriceDistanceLong.ToComplexGene();
             genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceWalletExposureWeightingLong + offset] = options.Value.ReentryPositionPriceDistanceWalletExposureWeightingLong.ToComplexGene();
+            genes[(int)RecursiveGridTradingBotGene.DDownFactorShort + offset] = options.Value.DDownFactorShort.ToComplexGene();
+            genes[(int)RecursiveGridTradingBotGene.InitialQtyPctShort + offset] = options.Value.InitialQtyPctShort.ToComplexGene();
+            genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceShort + offset] = options.Value.ReentryPositionPriceDistanceShort.ToComplexGene();
+            genes[(int)RecursiveGridTradingBotGene.ReentryPositionPriceDistanceWalletExposureWeightingShort + offset] = options.Value.ReentryPositionPriceDistanceWalletExposureWeightingShort.ToComplexGene();
         }
 
         protected static int GetGeneLength<T>() where T : Enum

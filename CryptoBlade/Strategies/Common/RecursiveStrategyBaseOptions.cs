@@ -11,5 +11,13 @@ namespace CryptoBlade.Strategies.Common
         public double ReentryPositionPriceDistanceLong { get; set; }
 
         public double ReentryPositionPriceDistanceWalletExposureWeightingLong { get; set; }
+
+        public double DDownFactorShort { get; set; }
+
+        public double InitialQtyPctShort { get; set; }
+
+        public double ReentryPositionPriceDistanceShort { get; set; }
+
+        public double ReentryPositionPriceDistanceWalletExposureWeightingShort { get; set; }
     }
 }

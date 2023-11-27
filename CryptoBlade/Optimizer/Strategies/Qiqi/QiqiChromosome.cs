@@ -27,6 +27,10 @@ namespace CryptoBlade.Optimizer.Strategies.Qiqi
             options.StrategyName = StrategyNames.Qiqi;
             options.Strategies.Qiqi.QflBellowPercentEnterLong = complexGenes[(int)QiqiGene.QflBellowPercentEnterLong + basicGeneLength].FloatValue;
             options.Strategies.Qiqi.RsiTakeProfitLong = complexGenes[(int)QiqiGene.RsiTakeProfitLong + basicGeneLength].IntValue;
+            options.Strategies.Qiqi.QflAbovePercentEnterShort = complexGenes[(int)QiqiGene.QflAbovePercentEnterShort + basicGeneLength].FloatValue;
+            options.Strategies.Qiqi.RsiTakeProfitShort = complexGenes[(int)QiqiGene.RsiTakeProfitShort + basicGeneLength].IntValue;
+            options.Strategies.Qiqi.TakeProfitPercentLong = complexGenes[(int)QiqiGene.TakeProfitPercentLong + basicGeneLength].FloatValue;
+            options.Strategies.Qiqi.TakeProfitPercentShort = complexGenes[(int)QiqiGene.TakeProfitPercentShort + basicGeneLength].FloatValue;
         }
 
         private static ComplexGene[] CreateComplexGenes(IOptions<QiqiChromosomeOptions> options)
@@ -37,6 +41,10 @@ namespace CryptoBlade.Optimizer.Strategies.Qiqi
             AddTradingBotGenesFromOptions(options, genes, 0);
             genes[(int)QiqiGene.QflBellowPercentEnterLong + tradingBotGeneLength] = options.Value.QflBellowPercentEnterLong.ToComplexGene();
             genes[(int)QiqiGene.RsiTakeProfitLong + tradingBotGeneLength] = options.Value.RsiTakeProfitLong.ToComplexGene();
+            genes[(int)QiqiGene.QflAbovePercentEnterShort + tradingBotGeneLength] = options.Value.QflAbovePercentEnterShort.ToComplexGene();
+            genes[(int)QiqiGene.RsiTakeProfitShort + tradingBotGeneLength] = options.Value.RsiTakeProfitShort.ToComplexGene();
+            genes[(int)QiqiGene.TakeProfitPercentLong + tradingBotGeneLength] = options.Value.TakeProfitPercentLong.ToComplexGene();
+            genes[(int)QiqiGene.TakeProfitPercentShort + tradingBotGeneLength] = options.Value.TakeProfitPercentShort.ToComplexGene();
             return genes;
         }
 

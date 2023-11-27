@@ -3,6 +3,10 @@
     public enum QiqiGene
     {
         RsiTakeProfitLong,
-        QflBellowPercentEnterLong
+        QflBellowPercentEnterLong,
+        RsiTakeProfitShort,
+        QflAbovePercentEnterShort,
+        TakeProfitPercentLong,
+        TakeProfitPercentShort,
     }
 }

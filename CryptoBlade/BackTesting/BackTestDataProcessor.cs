@@ -1,4 +1,5 @@
-﻿using CryptoBlade.Models;
+﻿using CryptoBlade.Mapping;
+using CryptoBlade.Models;
 
 namespace CryptoBlade.BackTesting
 {
@@ -54,16 +55,28 @@ namespace CryptoBlade.BackTesting
 
         private static void DequeueOldCandles(Queue<Candle> queue, DateTime currentTime)
         {
-            while (queue.TryPeek(out var nextCandle) && nextCandle.StartTime < currentTime)
+            while (queue.TryPeek(out var nextCandle) && IsOldCandle(nextCandle, currentTime))
                 queue.Dequeue();
+        }
+
+        private static bool IsOldCandle(Candle candle, DateTime currentTime)
+        {
+            var candleEndTime = candle.StartTime + candle.TimeFrame.ToTimeSpan();
+            var currentEndTime = currentTime + TimeSpan.FromMinutes(1);
+            bool old = candleEndTime < currentEndTime;
+            return old;
         }
 
         private static Candle? TryDequeueCurrentCandle(Queue<Candle> queue, DateTime currentTime)
         {
             if (!queue.TryPeek(out var nextCandle))
                 return null;
-            if (nextCandle.StartTime > currentTime)
+            var candleEndTime = nextCandle.StartTime + nextCandle.TimeFrame.ToTimeSpan();
+            var currentEndTime = currentTime + TimeSpan.FromMinutes(1);
+            
+            if (candleEndTime > currentEndTime)
                 return null;
+
             return queue.Dequeue();
         }
     }

@@ -137,7 +137,11 @@ namespace CryptoBlade.Strategies
                 {
                     strategyOptions.QflBellowPercentEnterLong = config.Strategies.Qiqi.QflBellowPercentEnterLong;
                     strategyOptions.RsiTakeProfitLong = config.Strategies.Qiqi.RsiTakeProfitLong;
+                    strategyOptions.QflAbovePercentEnterShort = config.Strategies.Qiqi.QflAbovePercentEnterShort;
+                    strategyOptions.RsiTakeProfitShort = config.Strategies.Qiqi.RsiTakeProfitShort;
                     strategyOptions.MaxTimeStuck = config.Strategies.Qiqi.MaxTimeStuck;
+                    strategyOptions.TakeProfitPercentLong = config.Strategies.Qiqi.TakeProfitPercentLong;
+                    strategyOptions.TakeProfitPercentShort = config.Strategies.Qiqi.TakeProfitPercentShort;
                 });
             return new QiqiStrategy(options, symbol, m_walletManager, m_restClient);
         }
@@ -164,6 +168,10 @@ namespace CryptoBlade.Strategies
                 InitialQtyPctLong = config.Strategies.Recursive.InitialQtyPctLong,
                 ReentryPositionPriceDistanceLong = config.Strategies.Recursive.ReentryPositionPriceDistanceLong,
                 ReentryPositionPriceDistanceWalletExposureWeightingLong = config.Strategies.Recursive.ReentryPositionPriceDistanceWalletExposureWeightingLong,
+                DDownFactorShort = config.Strategies.Recursive.DDownFactorShort,
+                InitialQtyPctShort = config.Strategies.Recursive.InitialQtyPctShort,
+                ReentryPositionPriceDistanceShort = config.Strategies.Recursive.ReentryPositionPriceDistanceShort,
+                ReentryPositionPriceDistanceWalletExposureWeightingShort = config.Strategies.Recursive.ReentryPositionPriceDistanceWalletExposureWeightingShort,
             };
             optionsSetup(options);
             return Options.Create(options);

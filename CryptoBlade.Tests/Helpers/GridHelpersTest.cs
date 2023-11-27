@@ -64,5 +64,42 @@ namespace CryptoBlade.Tests.Helpers
             Assert.Equal(0.07222, longEntry.Price);
             Assert.Equal(138.0, longEntry.Qty);
         }
+
+        [Fact]
+        public void CalcRecursiveEntryShort()
+        {
+            double balance = 1000;
+            double positionSize = 0;
+            double entryPrice = 0.07222;
+            bool inverse = false;
+            double qtyStep = 1.0;
+            double priceStep = 0.00001;
+            double minQty = 1.0;
+            double minCost = 5.0;
+            double cMultiplier = 1.0;
+            double initialQtyPct = 0.01;
+            double ddownFactor = 2.1428512029160007;
+            double walletExposureLimit = 1.0;
+            double reentryPositionPriceDistance = 0.018514600084018253;
+            double reentryPositionPriceDistanceWalletExposureWeighting = 2.119869195156612;
+            var shortEntry = GridHelpers.CalcRecursiveEntryShort(
+                balance,
+                positionSize,
+                entryPrice,
+                entryPrice,
+                inverse,
+                qtyStep,
+                priceStep,
+                minQty,
+                minCost,
+                cMultiplier,
+                initialQtyPct,
+                ddownFactor,
+                reentryPositionPriceDistance,
+                reentryPositionPriceDistanceWalletExposureWeighting,
+                walletExposureLimit);
+            Assert.Equal(0.07222, shortEntry.Price);
+            Assert.Equal(138.0, shortEntry.Qty);
+        }
     }
 }

@@ -290,6 +290,7 @@ namespace CryptoBlade.Strategies.Common
                     && !buyOrders.Any()
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleLongOrder)
                     && dynamicQtyLong.HasValue
+                    && dynamicQtyLong.Value > 0
                     && canOpenLongPosition
                     && LongFundingWithinLimit(ticker))
                 {
@@ -305,6 +306,7 @@ namespace CryptoBlade.Strategies.Common
                     && !sellOrders.Any()
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleShortOrder)
                     && dynamicQtyShort.HasValue
+                    && dynamicQtyShort.Value > 0
                     && canOpenShortPosition
                     && ShortFundingWithinLimit(ticker))
                 {
@@ -322,6 +324,7 @@ namespace CryptoBlade.Strategies.Common
                     && walletLongExposure.HasValue && walletLongExposure.Value < m_options.Value.WalletExposureLong
                     && !buyOrders.Any()
                     && dynamicQtyLong.HasValue
+                    && dynamicQtyLong.Value > 0
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleLongOrder)
                     && LongFundingWithinLimit(ticker)
                     && !executeParams.LongUnstucking
@@ -341,6 +344,7 @@ namespace CryptoBlade.Strategies.Common
                     && walletShortExposure.HasValue && walletShortExposure.Value < m_options.Value.WalletExposureShort
                     && !sellOrders.Any()
                     && dynamicQtyShort.HasValue
+                    && dynamicQtyShort.Value > 0
                     && NoTradeForCandle(lastPrimaryQuote, LastCandleShortOrder)
                     && ShortFundingWithinLimit(ticker)
                     && !executeParams.ShortUnstucking

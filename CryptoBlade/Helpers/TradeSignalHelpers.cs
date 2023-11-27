@@ -75,11 +75,10 @@ namespace CryptoBlade.Helpers
             return spread;
         }
 
-        public static Trend GetModifiedEriTrend(Quote[] quotes)
+        public static Trend GetModifiedEriTrend(Quote[] quotes, int slowEmaPeriod = 64)
         {
             try
             {
-                const int slowEmaPeriod = 64;
                 var vwma = quotes.GetVwma(slowEmaPeriod).ToArray();
                 if(vwma.All(x => !x.Vwma.HasValue))
                     return Trend.Neutral;

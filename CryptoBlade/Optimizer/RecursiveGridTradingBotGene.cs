@@ -26,5 +26,9 @@
         InitialQtyPctLong,
         ReentryPositionPriceDistanceLong,
         ReentryPositionPriceDistanceWalletExposureWeightingLong,
+        DDownFactorShort,
+        InitialQtyPctShort,
+        ReentryPositionPriceDistanceShort,
+        ReentryPositionPriceDistanceWalletExposureWeightingShort,
     }
 }
